@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Kunjungan Toko — SKN/Unistar</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #1f2933; margin: 0; padding: 16px; }
+    .wrap { max-width: 620px; margin: 0 auto; }
+    .nav { display: flex; gap: 8px; margin-bottom: 14px; }
+    .nav button { flex: 1; padding: 11px; border: 1px solid #cbd2d9; background: #fff; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; color: #51606e; }
+    .nav button.on { background: #0b3d91; color: #fff; border-color: #0b3d91; }
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.08); padding: 22px; }
+    h1 { font-size: 20px; margin: 0 0 2px; color: #0b3d91; }
+    .sub { font-size: 13px; color: #6b7280; margin: 0 0 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+    input[type=text], input[type=date], select { width: 100%; padding: 11px 12px; border: 1px solid #cbd2d9; border-radius: 9px; font-size: 15px; background: #fff; }
+    input[type=file] { width: 100%; padding: 12px; border: 1.5px dashed #9aa5b1; border-radius: 9px; font-size: 14px; background: #fafbfc; }
+    .hint { font-size: 12px; color: #9aa5b1; margin-top: 5px; }
+    .btn { width: 100%; margin-top: 20px; padding: 13px; border: 0; border-radius: 9px; background: #0b3d91; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #9aa5b1; cursor: not-allowed; }
+    #bar { height: 8px; background: #e4e7eb; border-radius: 5px; margin-top: 14px; overflow: hidden; display: none; }
+    #barfill { height: 100%; width: 0%; background: #0b3d91; transition: width .2s; }
+    #msg { margin-top: 16px; padding: 12px; border-radius: 9px; font-size: 14px; display: none; }
+    #msg.ok { background: #e3f9e5; color: #0b6b2e; display: block; }
+    #msg.err { background: #ffe3e3; color: #a61b1b; display: block; }
+    .req { color: #d64545; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .topbar h1 { font-size: 19px; }
+    .barr { display: flex; gap: 8px; margin: 0 0 12px; }
+    #cari { flex: 1; padding: 10px 12px; border: 1px solid #cbd2d9; border-radius: 9px; font-size: 14px; }
+    .reload { border: 1px solid #cbd2d9; background: #fff; border-radius: 9px; padding: 0 14px; cursor: pointer; font-size: 14px; }
+    .item { background: #fff; border-radius: 11px; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 10px; overflow: hidden; }
+    .head { padding: 13px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .head:hover { background: #fafbfc; }
+    .toko { font-weight: 700; font-size: 15px; }
+    .jt { font-size: 10px; font-weight: 700; color: #0b3d91; background: #e8edf9; padding: 2px 7px; border-radius: 6px; margin-left: 4px; vertical-align: middle; }
+    .meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .b-ok { background: #e3f9e5; color: #0b6b2e; }
+    .b-err { background: #ffe3e3; color: #a61b1b; }
+    .b-proc { background: #fff3d6; color: #8a5a00; }
+    .chev { margin-left: auto; color: #9aa5b1; transition: transform .2s; }
+    .item.open .chev { transform: rotate(90deg); }
+    .detail { display: none; padding: 4px 15px 16px; border-top: 1px solid #eef1f4; }
+    .item.open .detail { display: block; }
+    .fld { margin-top: 12px; }
+    .fld .k { font-size: 11px; font-weight: 700; color: #0b3d91; text-transform: uppercase; letter-spacing: .03em; }
+    .fld .v { font-size: 14px; margin-top: 3px; white-space: pre-wrap; }
+    .vl { margin: 5px 0 0; padding-left: 20px; }
+    .vl li { font-size: 14px; line-height: 1.5; margin: 4px 0; }
+    .brand { color: #0b3d91; }
+    .num { color: #0b6b2e; font-weight: 700; }
+    .sec { font-size: 12px; font-weight: 800; color: #3a4654; letter-spacing: .04em; text-transform: uppercase; margin: 18px 0 2px; padding-bottom: 5px; border-bottom: 2px solid #e6ebf2; }
+    .reko { background: #f0f5ff; border-left: 3px solid #0b3d91; border-radius: 6px; padding: 10px 12px; }
+    .aksi { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+    .vid { font-size: 13px; color: #0b3d91; }
+    .dl { background: #0b3d91; color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .dl:disabled { background: #9aa5b1; cursor: not-allowed; }
+    .empty, .loading { text-align: center; color: #9aa5b1; padding: 40px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <button id="navUp" class="on" onclick="tab('up')">📤 Upload</button>
+      <button id="navHs" onclick="tab('hs')">📋 Hasil Kunjungan</button>
+    </div>
+
+    <!-- ===== UPLOAD ===== -->
+    <div id="viewUp" class="card">
+      <h1>📱 Video Kunjungan Toko</h1>
+      <p class="sub">SKN / Unistar — upload video/foto kunjungan toko</p>
+      <form id="f" onsubmit="return false;">
+        <label>Tanggal Kunjungan <span class="req">*</span></label>
+        <input type="date" id="tanggalKunjungan" required>
+        <label>Nama Toko <span class="req">*</span></label>
+        <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
+        <label>Jenis Toko <span class="req">*</span></label>
+        <select id="jenisToko" required>
+          <option value="">-- pilih jenis toko --</option>
+          <option value="WMD">WMD</option>
+          <option value="RKA">RKA</option>
+          <option value="RMD 1">RMD 1</option>
+          <option value="RMD 2">RMD 2</option>
+          <option value="RMD 3">RMD 3</option>
+          <option value="RMD 4">RMD 4</option>
+          <option value="RMD 5">RMD 5</option>
+          <option value="SR">SR</option>
+        </select>
+        <label>Area / Kota <span class="req">*</span></label>
+        <input type="text" id="area" placeholder="cth: Medan Kota" required>
+        <label>Nama Sales <span class="req">*</span></label>
+        <input type="text" id="namaSales" placeholder="cth: Budi" required>
+        <label>Video / Foto Toko <span class="req">*</span></label>
+        <input type="file" id="file" accept="video/*,image/*" required>
+        <div class="hint">⏱️ Video sampai ±10-15 menit (maks 500 MB). Rekam di resolusi 720p. Pan pelan ke etalase/rak/branding.</div>
+        <button type="button" class="btn" id="btn" onclick="kirim()">Kirim</button>
+        <div id="bar"><div id="barfill"></div></div>
+        <div id="msg"></div>
+      </form>
+    </div>
+
+    <!-- ===== HASIL ===== -->
+    <div id="viewHs" style="display:none;">
+      <div class="topbar"><h1>📋 Hasil Video Kunjungan Toko</h1></div>
+      <div class="barr">
+        <input id="cari" placeholder="Cari toko / jenis / area / sales..." oninput="render()">
+        <button class="reload" onclick="muat()">↻</button>
+      </div>
+      <div id="list"><div class="loading">Memuat data...</div></div>
+    </div>
+  </div>
+
+  <script>
+    // ====== GANTI dengan URL Web App Apps Script kamu (akhiran /exec) ======
+    var APP_URL = 'https://script.google.com/macros/s/AKfycbxrxIizlkcaFwH1db6vZ-HBTNhojDHpy7lwDpuIli2aDAV-dWnRakgwBjXOnGTq--mOig/exec';
+
+    var MAX = 500 * 1024 * 1024;
+    var CHUNK = 5 * 1024 * 1024;
+    var DATA = [];
+
+    // panggil Apps Script via fetch (text/plain → tanpa preflight CORS)
+    async function callApi(action, params) {
+      var body = Object.assign({ action: action }, params || {});
+      var r = await fetch(APP_URL, { method: 'POST', body: JSON.stringify(body) });
+      var j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Gagal memproses');
+      return j.result;
+    }
+
+    function tab(t) {
+      document.getElementById('viewUp').style.display = (t === 'up') ? 'block' : 'none';
+      document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
+      document.getElementById('navUp').className = (t === 'up') ? 'on' : '';
+      document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
+      if (t === 'hs' && !DATA.length) muat();
+    }
+
+    // ---------- UPLOAD ----------
+    function sliceB64(file, start, end) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function (e) { resolve(e.target.result.split(',')[1]); };
+        r.onerror = reject;
+        r.readAsDataURL(file.slice(start, end));
+      });
+    }
+    async function kirim() {
+      var btn = document.getElementById('btn');
+      var fileInput = document.getElementById('file');
+      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales') };
+      if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
+      if (!fileInput.files.length) return show('err', 'Mohon pilih file video atau foto.');
+      var file = fileInput.files[0];
+      if (file.size > MAX) return show('err', 'Ukuran file ' + mb(file.size) + ' MB melebihi batas 500 MB.');
+      btn.disabled = true;
+      document.getElementById('bar').style.display = 'block';
+      setBar(0);
+      show('ok', '⏳ Mengunggah... jangan tutup halaman (file ' + mb(file.size) + ' MB).');
+      try {
+        var sid = await callApi('mulaiUpload', { fileName: file.name, mimeType: file.type });
+        var fileId = null, start = 0;
+        while (start < file.size) {
+          var end = Math.min(start + CHUNK, file.size);
+          var b64 = await sliceB64(file, start, end);
+          var isLast = end >= file.size;
+          var res = await callApi('uploadChunk', { sid: sid, b64: b64, start: start, total: file.size, isLast: isLast });
+          start = end;
+          setBar(Math.round(start / file.size * 100));
+          if (res && res.done) { fileId = res.fileId; break; }
+        }
+        if (!fileId) throw new Error('Upload tidak selesai. Coba lagi.');
+        show('ok', '⏳ Menyimpan data...');
+        var done = await callApi('catatBaris', { form: form, fileId: fileId, mimeType: file.type });
+        show('ok', '✅ Berhasil! Data tersimpan dengan ID ' + done.id);
+        document.getElementById('f').reset();
+        setBar(100);
+      } catch (err) {
+        show('err', '❌ ' + (err && err.message ? err.message : err));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ---------- DASHBOARD ----------
+    async function muat() {
+      document.getElementById('list').innerHTML = '<div class="loading">Memuat data...</div>';
+      try { DATA = await callApi('getData'); render(); }
+      catch (e) { document.getElementById('list').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+    function render() {
+      var q = document.getElementById('cari').value.toLowerCase();
+      var rows = (DATA || []).filter(function (r) { return !q || (String(r.toko) + r.area + r.sales + (r.jenisToko || '')).toLowerCase().indexOf(q) > -1; });
+      if (!rows.length) { document.getElementById('list').innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
+      document.getElementById('list').innerHTML = rows.map(itemHtml).join('');
+    }
+    function badge(s) {
+      s = String(s || '');
+      if (s === 'Selesai') return '<span class="badge b-ok">Selesai</span>';
+      if (s === 'Error') return '<span class="badge b-err">Error</span>';
+      return '<span class="badge b-proc">' + (s || '-') + '</span>';
+    }
+    function hi(s) {
+      s = esc(s);
+      s = s.replace(/\b(Infinix|itel|VGEN|Tecno)\b/gi, '<b class="brand">$1</b>');
+      s = s.replace(/(~?\d+(?:[.,]\d+)?%|~?\d+\s*(?:unit|pcs|pc))/gi, '<b class="num">$1</b>');
+      return s;
+    }
+    function fld(k, v, cls) {
+      if (!v) return '';
+      var lines = String(v).split(/\r?\n|•|;\s/).map(function (x) { return x.replace(/^[\s\-–•]+/, '').trim(); }).filter(Boolean);
+      var body = (lines.length <= 1)
+        ? '<div class="v">' + hi(lines[0] || v) + '</div>'
+        : '<ul class="vl">' + lines.map(function (l) { return '<li>' + hi(l) + '</li>'; }).join('') + '</ul>';
+      return '<div class="fld ' + (cls || '') + '"><div class="k">' + k + '</div>' + body + '</div>';
+    }
+    function itemHtml(r) {
+      var detail = '';
+      if (r.status === 'Selesai') {
+        detail =
+          '<div class="sec">⚡ Aksi di toko ini</div>' +
+          fld('📊 Pangsa Stok', r.pangsa, 'reko') +
+          fld('🎯 Saran Penempatan', r.rekomendasi, 'reko') +
+          fld('📦 Saran Stok', r.saran, 'reko') +
+          '<div class="sec">🔎 Kondisi toko</div>' +
+          fld('Merek Terdeteksi', r.merek) +
+          fld('Tipe / Model', r.tipe) +
+          fld('Estimasi Stok', r.stok) +
+          fld('Branding & POSM', r.branding) +
+          fld('Lokasi Display', r.display) +
+          fld('Layout Toko', r.layout) +
+          fld('Ringkasan', r.ringkasan);
+      } else if (r.status === 'Error') {
+        detail = fld('Catatan Error', r.catatan);
+      } else {
+        detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
+      }
+      var vid = r.link ? '<a class="vid" href="' + r.link + '" target="_blank">▶️ Buka video/foto</a>' : '';
+      var dl = (r.status === 'Selesai') ? '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>' : '';
+      return '<div class="item" onclick="this.classList.toggle(\'open\')">' +
+        '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
+        '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
+        badge(r.status) + '<span class="chev">▶</span></div>' +
+        '<div class="detail">' + detail + '<div class="aksi">' + vid + dl + '</div></div></div>';
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    async function unduhPdf(ev, id) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget, asli = btn.textContent;
+      btn.textContent = '⏳ Membuat PDF...'; btn.disabled = true;
+      try {
+        var res = await callApi('buatPdf', { id: id });
+        var bin = atob(res.b64), arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        var url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+        var a = document.createElement('a'); a.href = url; a.download = res.name;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      } catch (e) { alert('Gagal membuat PDF: ' + e.message); }
+      btn.textContent = asli; btn.disabled = false;
+    }
+
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function mb(b) { return (b / 1024 / 1024).toFixed(1); }
+    function setBar(p) { document.getElementById('barfill').style.width = p + '%'; }
+    function show(cls, text) { var m = document.getElementById('msg'); m.className = cls; m.textContent = text; }
+  </script>
+</body>
+</html>
