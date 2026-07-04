@@ -1,242 +1,271 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bank Pustaka SKN</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f4f6f9; color: #1f2937; }
-  .wrap { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
-  .head { text-align: center; margin-bottom: 8px; }
-  .head h1 { margin: 0; font-size: 24px; color: #1d4ed8; }
-  .head p { margin: 6px 0 0; color: #6b7280; font-size: 14px; }
-  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; margin-top: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
-  label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
-  select, textarea, input[type=text] { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; font-family: inherit; background: #fff; }
-  textarea { min-height: 140px; resize: vertical; }
-  .row { margin-bottom: 16px; }
-  button { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #1d4ed8; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s; }
-  button:hover { filter: brightness(0.95); }
-  button:disabled { background: #9ca3af; cursor: not-allowed; }
-  #hasil { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
-  #hasilCard { display: none; }
-  .loading { text-align: center; color: #6b7280; padding: 20px; }
-  .spinner { width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: #1d4ed8; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .err { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 10px; }
-  .foot { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px; }
-  .pustaka { max-width: 820px; margin: 14px auto 0; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
-  .pustaka summary { cursor: pointer; font-weight: 600; color: #1d4ed8; }
-  .pustaka .isi { margin-top: 8px; color: #374151; line-height: 1.7; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Kunjungan Toko — SKN/Unistar</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #1f2933; margin: 0; padding: 16px; }
+    .wrap { max-width: 620px; margin: 0 auto; }
+    .nav { display: flex; gap: 8px; margin-bottom: 14px; }
+    .nav button { flex: 1; padding: 11px; border: 1px solid #cbd2d9; background: #fff; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; color: #51606e; }
+    .nav button.on { background: #0b3d91; color: #fff; border-color: #0b3d91; }
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.08); padding: 22px; }
+    h1 { font-size: 20px; margin: 0 0 2px; color: #0b3d91; }
+    .sub { font-size: 13px; color: #6b7280; margin: 0 0 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+    input[type=text], input[type=date], select { width: 100%; padding: 11px 12px; border: 1px solid #cbd2d9; border-radius: 9px; font-size: 15px; background: #fff; }
+    input[type=file] { width: 100%; padding: 12px; border: 1.5px dashed #9aa5b1; border-radius: 9px; font-size: 14px; background: #fafbfc; }
+    .hint { font-size: 12px; color: #9aa5b1; margin-top: 5px; }
+    .btn { width: 100%; margin-top: 20px; padding: 13px; border: 0; border-radius: 9px; background: #0b3d91; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #9aa5b1; cursor: not-allowed; }
+    #bar { height: 8px; background: #e4e7eb; border-radius: 5px; margin-top: 14px; overflow: hidden; display: none; }
+    #barfill { height: 100%; width: 0%; background: #0b3d91; transition: width .2s; }
+    #msg { margin-top: 16px; padding: 12px; border-radius: 9px; font-size: 14px; display: none; }
+    #msg.ok { background: #e3f9e5; color: #0b6b2e; display: block; }
+    #msg.err { background: #ffe3e3; color: #a61b1b; display: block; }
+    .req { color: #d64545; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .topbar h1 { font-size: 19px; }
+    .barr { display: flex; gap: 8px; margin: 0 0 12px; }
+    #cari { flex: 1; padding: 10px 12px; border: 1px solid #cbd2d9; border-radius: 9px; font-size: 14px; }
+    .reload { border: 1px solid #cbd2d9; background: #fff; border-radius: 9px; padding: 0 14px; cursor: pointer; font-size: 14px; }
+    .item { background: #fff; border-radius: 11px; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 10px; overflow: hidden; }
+    .head { padding: 13px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .head:hover { background: #fafbfc; }
+    .toko { font-weight: 700; font-size: 15px; }
+    .jt { font-size: 10px; font-weight: 700; color: #0b3d91; background: #e8edf9; padding: 2px 7px; border-radius: 6px; margin-left: 4px; vertical-align: middle; }
+    .meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .b-ok { background: #e3f9e5; color: #0b6b2e; }
+    .b-err { background: #ffe3e3; color: #a61b1b; }
+    .b-proc { background: #fff3d6; color: #8a5a00; }
+    .chev { margin-left: auto; color: #9aa5b1; transition: transform .2s; }
+    .item.open .chev { transform: rotate(90deg); }
+    .detail { display: none; padding: 4px 15px 16px; border-top: 1px solid #eef1f4; }
+    .item.open .detail { display: block; }
+    .fld { margin-top: 12px; }
+    .fld .k { font-size: 11px; font-weight: 700; color: #0b3d91; text-transform: uppercase; letter-spacing: .03em; }
+    .fld .v { font-size: 14px; margin-top: 3px; white-space: pre-wrap; }
+    .vl { margin: 5px 0 0; padding-left: 20px; }
+    .vl li { font-size: 14px; line-height: 1.5; margin: 4px 0; }
+    .brand { color: #0b3d91; }
+    .num { color: #0b6b2e; font-weight: 700; }
+    .sec { font-size: 12px; font-weight: 800; color: #3a4654; letter-spacing: .04em; text-transform: uppercase; margin: 18px 0 2px; padding-bottom: 5px; border-bottom: 2px solid #e6ebf2; }
+    .reko { background: #f0f5ff; border-left: 3px solid #0b3d91; border-radius: 6px; padding: 10px 12px; }
+    .aksi { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+    .vid { font-size: 13px; color: #0b3d91; }
+    .dl { background: #0b3d91; color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .dl:disabled { background: #9aa5b1; cursor: not-allowed; }
+    .empty, .loading { text-align: center; color: #9aa5b1; padding: 40px 0; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="head">
-    <h1>🏛️ Bank Pustaka SKN</h1>
-    <p>Kirim masalah / rekaman / foto / PDF / Excel → dapat analisa & solusi lengkap</p>
+  <div class="wrap">
+    <div class="nav">
+      <button id="navUp" class="on" onclick="tab('up')">📤 Upload</button>
+      <button id="navHs" onclick="tab('hs')">📋 Hasil Kunjungan</button>
+    </div>
+
+    <!-- ===== UPLOAD ===== -->
+    <div id="viewUp" class="card">
+      <h1>📱 Video Kunjungan Toko</h1>
+      <p class="sub">SKN / Unistar — upload video/foto kunjungan toko</p>
+      <form id="f" onsubmit="return false;">
+        <label>Tanggal Kunjungan <span class="req">*</span></label>
+        <input type="date" id="tanggalKunjungan" required>
+        <label>Nama Toko <span class="req">*</span></label>
+        <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
+        <label>Jenis Toko <span class="req">*</span></label>
+        <select id="jenisToko" required>
+          <option value="">-- pilih jenis toko --</option>
+          <option value="WMD">WMD</option>
+          <option value="RKA">RKA</option>
+          <option value="RMD 1">RMD 1</option>
+          <option value="RMD 2">RMD 2</option>
+          <option value="RMD 3">RMD 3</option>
+          <option value="RMD 4">RMD 4</option>
+          <option value="RMD 5">RMD 5</option>
+          <option value="SR">SR</option>
+        </select>
+        <label>Area / Kota <span class="req">*</span></label>
+        <input type="text" id="area" placeholder="cth: Medan Kota" required>
+        <label>Nama Sales <span class="req">*</span></label>
+        <input type="text" id="namaSales" placeholder="cth: Budi" required>
+        <label>Video / Foto Toko <span class="req">*</span></label>
+        <input type="file" id="file" accept="video/*,image/*" required>
+        <div class="hint">⏱️ Video sampai ±10-15 menit (maks 500 MB). Rekam di resolusi 720p. Pan pelan ke etalase/rak/branding.</div>
+        <button type="button" class="btn" id="btn" onclick="kirim()">Kirim</button>
+        <div id="bar"><div id="barfill"></div></div>
+        <div id="msg"></div>
+      </form>
+    </div>
+
+    <!-- ===== HASIL ===== -->
+    <div id="viewHs" style="display:none;">
+      <div class="topbar"><h1>📋 Hasil Video Kunjungan Toko</h1></div>
+      <div class="barr">
+        <input id="cari" placeholder="Cari toko / jenis / area / sales..." oninput="render()">
+        <button class="reload" onclick="muat()">↻</button>
+      </div>
+      <div id="list"><div class="loading">Memuat data...</div></div>
+    </div>
   </div>
 
-  <details class="pustaka" id="pustakaBox">
-    <summary>📚 Memuat daftar buku…</summary>
-    <div class="isi" id="daftarBuku"></div>
-  </details>
+  <script>
+    // ====== GANTI dengan URL Web App Apps Script kamu (akhiran /exec) ======
+    var APP_URL = 'https://script.google.com/macros/s/AKfycbxrxIizlkcaFwH1db6vZ-HBTNhojDHpy7lwDpuIli2aDAV-dWnRakgwBjXOnGTq--mOig/exec';
 
-  <div class="card">
-    <div class="row">
-      <label for="divisi">Divisi</label>
-      <select id="divisi">
-        <option>Sales</option><option>HRD</option><option>Support</option><option>Lainnya</option>
-      </select>
-    </div>
+    var MAX = 500 * 1024 * 1024;
+    var CHUNK = 5 * 1024 * 1024;
+    var DATA = [];
 
-    <div class="row" style="background:#f0f7ff; border:1px dashed #93c5fd; border-radius:12px; padding:14px;">
-      <label for="berkas">📎 Lampirkan file: rekaman / foto / PDF / Excel</label>
-      <input type="file" id="berkas" accept="audio/*,image/*,.pdf,.xlsx,.xls,.csv,.opus,.ogg,.oga,.m4a,.mp3,.wav,.flac">
-      <button id="tombolAudio" onclick="prosesFile()" style="margin-top:12px;">🎧 Proses File &amp; Cari Solusi</button>
-      <p style="font-size:13px; color:#6b7280; margin:10px 0 0;">
-        Rekaman (voice note WA .opus/.ogg, mp3, m4a, wav) · Foto (jpg/png) · PDF · Excel (xlsx/csv). Maks 18 MB.
-        File .amr convert dulu ke mp3 di cloudconvert.com. Boleh sekaligus isi keterangan di kotak bawah.
-      </p>
-    </div>
-
-    <div class="row">
-      <label for="masalah">…atau ketik / tempel masalah manual (atau keterangan untuk file di atas)</label>
-      <textarea id="masalah" placeholder="Contoh: Owner toko bilang harga kita lebih mahal dari kompetitor, sales kita bingung menjawab dan akhirnya gagal closing..."></textarea>
-    </div>
-    <button id="tombol" onclick="kirim()">🔎 Cari Solusi</button>
-  </div>
-
-  <div class="card" id="hasilCard"><div id="hasil"></div></div>
-  <div class="foot">Bank Pustaka SKN · ditenagai Gemini · analisa buku + AI + masukan ASM/Support</div>
-</div>
-
-<script>
-  var EXEC_URL = "https://script.google.com/macros/s/AKfycbzKey-zWRADwxYY37s47-Lp8bYJO-XnisB75W70RJqZCCaYwiDlmaI4i-30brx0BZZJtg/exec";
-  var solusiPanjangTerakhir = '', masalahTerakhir = '';
-
-  function panggil(action, data) {
-    data = data || {}; data.action = action;
-    return fetch(EXEC_URL, { method: "POST", body: JSON.stringify(data) }).then(function (r) { return r.json(); });
-  }
-  function renderRapi(t) {
-    t = String(t || "").replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(?!\s)([^*\n]+?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
-    return t;
-  }
-  function loadingHtml(msg) { return '<div class="loading"><div class="spinner"></div>' + msg + '<br><small>(bisa 20-60 detik)</small></div>'; }
-  function selesaiTombolFile() { var t = document.getElementById('tombolAudio'); t.disabled = false; t.textContent = '🎧 Proses File & Cari Solusi'; }
-  function bacaBase64(file) { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res((r.result.split(',')[1]) || ''); }; r.onerror = function () { rej(new Error('gagal baca file')); }; r.readAsDataURL(file); }); }
-  function bacaExcel(file) {
-    return new Promise(function (res, rej) {
-      var r = new FileReader();
-      r.onload = function () {
-        try { var wb = XLSX.read(new Uint8Array(r.result), { type: 'array' }); var teks = '';
-          wb.SheetNames.forEach(function (nm) { teks += '--- Sheet: ' + nm + ' ---\n' + XLSX.utils.sheet_to_csv(wb.Sheets[nm]) + '\n\n'; });
-          res(teks.slice(0, 20000));
-        } catch (e) { rej(e); }
-      };
-      r.onerror = function () { rej(new Error('gagal baca excel')); };
-      r.readAsArrayBuffer(file);
-    });
-  }
-  function jenisFile(name) {
-    var ext = (name || '').toLowerCase().split('.').pop();
-    if (['opus','ogg','oga','m4a','mp3','wav','flac','aac','aiff','aif'].indexOf(ext) >= 0) return 'audio';
-    if (['jpg','jpeg','png','webp','heic','heif'].indexOf(ext) >= 0) return 'gambar';
-    if (ext === 'pdf') return 'pdf';
-    if (['xlsx','xls','csv'].indexOf(ext) >= 0) return 'excel';
-    return 'lain';
-  }
-  function mimeGambar(name, tipe) {
-    if (tipe && tipe.indexOf('image/') === 0) return tipe;
-    var ext = (name || '').toLowerCase().split('.').pop();
-    return ({ jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', heic:'image/heic', heif:'image/heif' })[ext] || 'image/jpeg';
-  }
-
-  function muatDaftarBuku() {
-    panggil("daftarBuku").then(function (res) {
-      var box = document.getElementById('pustakaBox'), isi = document.getElementById('daftarBuku');
-      if (res && res.ok && res.jumlah > 0) {
-        box.querySelector('summary').textContent = '📚 ' + res.jumlah + ' buku di pustaka (klik untuk lihat)';
-        isi.innerHTML = res.judul.map(function (j) { return '• ' + j.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }).join('<br>');
-      } else { box.style.display = 'none'; }
-    }).catch(function () { document.getElementById('pustakaBox').style.display = 'none'; });
-  }
-  muatDaftarBuku();
-
-  function blokTranskrip(t) {
-    return '<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px; margin-bottom:16px;">'
-         + '<strong>🎙️ Hasil Transkrip &amp; Analisa</strong><br><br>' + renderRapi(t) + '</div>';
-  }
-  function tombolRingkasHtml() {
-    return '<div style="margin-top:18px; border-top:1px dashed #e5e7eb; padding-top:16px;">'
-         + '<button id="tombolRingkas" onclick="ringkasTampil()" style="background:#059669;">⚡ Ringkas jadi poin tajam</button>'
-         + '<div id="ringkasArea"></div></div>';
-  }
-  function kotakMasukanHtml() {
-    return '<div style="margin-top:18px; border-top:1px dashed #e5e7eb; padding-top:16px;">'
-      + '<strong>➕ Tambah solusi dari ASM &amp; Tim Support</strong>'
-      + '<p style="font-size:13px;color:#6b7280;margin:4px 0 10px;">Solusi/pengalaman kamu disimpan &amp; dipakai AI untuk memperkaya jawaban berikutnya.</p>'
-      + '<input type="text" id="mNama" placeholder="Nama kamu" style="margin-bottom:8px;">'
-      + '<select id="mPeran" style="margin-bottom:8px;"><option>ASM</option><option>Tim Support</option><option>Sales</option><option>Lainnya</option></select>'
-      + '<textarea id="mSolusi" placeholder="Tulis solusi / pengalaman nyata kamu untuk masalah ini..." style="min-height:90px; margin-bottom:8px;"></textarea>'
-      + '<button onclick="kirimMasukan()" style="background:#7c3aed;">💾 Simpan Solusi Saya</button>'
-      + '<div id="mStatus"></div></div>';
-  }
-  function tampilSolusiFinal(headerHtml, jawaban) {
-    solusiPanjangTerakhir = jawaban;
-    document.getElementById('hasil').innerHTML = headerHtml + renderRapi(jawaban) + tombolRingkasHtml() + kotakMasukanHtml();
-  }
-
-  function ringkasTampil() {
-    if (!solusiPanjangTerakhir) return;
-    var t = document.getElementById('tombolRingkas'), area = document.getElementById('ringkasArea');
-    t.disabled = true; t.textContent = 'Meringkas...';
-    area.innerHTML = '<div class="loading"><div class="spinner"></div>Memadatkan jadi poin tajam...</div>';
-    panggil("ringkasSolusi", { jawaban: solusiPanjangTerakhir }).then(function (res) {
-      t.disabled = false; t.textContent = '⚡ Ringkas lagi';
-      if (res && res.ok) area.innerHTML = '<div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; padding:14px; margin-top:14px;"><strong>⚡ Ringkasan Poin Tajam</strong><br><br>' + renderRapi(res.ringkasan) + '</div>';
-      else area.innerHTML = '<div class="err">' + (res ? res.pesan : 'Gagal meringkas.') + '</div>';
-    }).catch(function (err) { t.disabled = false; t.textContent = '⚡ Ringkas jadi poin tajam'; area.innerHTML = '<div class="err">Gagal meringkas: ' + err.message + '</div>'; });
-  }
-
-  function kirimMasukan() {
-    var nama = document.getElementById('mNama').value, peran = document.getElementById('mPeran').value, solusi = document.getElementById('mSolusi').value, status = document.getElementById('mStatus');
-    if (!solusi || solusi.trim().length < 5) { status.innerHTML = '<div class="err" style="margin-top:8px">Isi solusinya dulu ya (min. 5 huruf).</div>'; return; }
-    status.innerHTML = '<div class="loading"><div class="spinner"></div>Menyimpan...</div>';
-    panggil("simpanMasukan", { nama: nama, peran: peran, masalah: masalahTerakhir, solusi: solusi }).then(function (res) {
-      if (res && res.ok) { status.innerHTML = '<div style="margin-top:8px;color:#059669;font-weight:600">✅ Tersimpan! Terima kasih — akan dipakai AI ke depannya.</div>'; document.getElementById('mSolusi').value = ''; }
-      else status.innerHTML = '<div class="err" style="margin-top:8px">' + (res ? res.pesan : 'Gagal simpan.') + '</div>';
-    }).catch(function (err) { status.innerHTML = '<div class="err" style="margin-top:8px">Gagal: ' + err.message + '</div>'; });
-  }
-
-  function prosesFile() {
-    var input = document.getElementById('berkas'), kartu = document.getElementById('hasilCard'), hasil = document.getElementById('hasil'), tombol = document.getElementById('tombolAudio');
-    if (!input.files || !input.files.length) { kartu.style.display = 'block'; hasil.innerHTML = '<div class="err">Pilih file dulu ya.</div>'; return; }
-    var file = input.files[0];
-    if (file.size > 18 * 1024 * 1024) { kartu.style.display = 'block'; hasil.innerHTML = '<div class="err">File terlalu besar (' + (file.size / 1048576).toFixed(1) + ' MB). Maks 18 MB.</div>'; return; }
-    var divisi = document.getElementById('divisi').value, teksTambahan = document.getElementById('masalah').value.trim(), jenis = jenisFile(file.name);
-    tombol.disabled = true; kartu.style.display = 'block';
-    masalahTerakhir = teksTambahan || ('(dari file ' + file.name + ')');
-
-    if (jenis === 'audio') {
-      tombol.textContent = 'Mendengarkan rekaman...';
-      hasil.innerHTML = loadingHtml('Gemini sedang mendengarkan & mentranskrip rekaman...');
-      bacaBase64(file).then(function (b64) { return panggil("transkripsiRekaman", { base64: b64, namaFile: file.name }); }).then(function (res) {
-        if (!res || !res.ok) { selesaiTombolFile(); hasil.innerHTML = '<div class="err">' + (res ? res.pesan : 'Gagal transkrip.') + '</div>'; return; }
-        document.getElementById('masalah').value = res.transkrip; masalahTerakhir = res.transkrip;
-        hasil.innerHTML = blokTranskrip(res.transkrip) + loadingHtml('Menganalisa & mencari solusi...'); tombol.textContent = 'Mencari solusi...';
-        return panggil("cariSolusi", { masalah: res.transkrip, divisi: divisi }).then(function (r2) {
-          selesaiTombolFile();
-          if (r2 && r2.ok) tampilSolusiFinal(blokTranskrip(res.transkrip) + '<strong>💡 Solusi &amp; Analisa</strong><br><br>', r2.jawaban);
-          else hasil.innerHTML = blokTranskrip(res.transkrip) + '<div class="err">' + (r2 ? r2.pesan : 'Gagal.') + '</div>';
-        });
-      }).catch(function (err) { selesaiTombolFile(); hasil.innerHTML = '<div class="err">Gagal: ' + err.message + '</div>'; });
-
-    } else if (jenis === 'gambar' || jenis === 'pdf') {
-      tombol.textContent = 'Membaca file...';
-      hasil.innerHTML = loadingHtml('Gemini sedang membaca file & menganalisa...');
-      bacaBase64(file).then(function (b64) {
-        var mime = (jenis === 'pdf') ? 'application/pdf' : mimeGambar(file.name, file.type);
-        return panggil("cariSolusi", { masalah: teksTambahan, divisi: divisi, lampiran: { mime: mime, base64: b64 } });
-      }).then(function (res) {
-        selesaiTombolFile();
-        if (res && res.ok) tampilSolusiFinal('<strong>💡 Solusi &amp; Analisa</strong><br><br>', res.jawaban);
-        else hasil.innerHTML = '<div class="err">' + (res ? res.pesan : 'Gagal.') + '</div>';
-      }).catch(function (err) { selesaiTombolFile(); hasil.innerHTML = '<div class="err">Gagal: ' + err.message + '</div>'; });
-
-    } else if (jenis === 'excel') {
-      tombol.textContent = 'Membaca Excel...';
-      hasil.innerHTML = loadingHtml('Membaca isi Excel & menganalisa...');
-      bacaExcel(file).then(function (teks) {
-        var gab = (teksTambahan ? teksTambahan + '\n\n' : '') + 'ISI FILE EXCEL (' + file.name + '):\n' + teks;
-        masalahTerakhir = gab; return panggil("cariSolusi", { masalah: gab, divisi: divisi });
-      }).then(function (res) {
-        selesaiTombolFile();
-        if (res && res.ok) tampilSolusiFinal('<strong>💡 Solusi &amp; Analisa</strong><br><br>', res.jawaban);
-        else hasil.innerHTML = '<div class="err">' + (res ? res.pesan : 'Gagal.') + '</div>';
-      }).catch(function (err) { selesaiTombolFile(); hasil.innerHTML = '<div class="err">Gagal baca Excel: ' + err.message + '</div>'; });
-
-    } else {
-      selesaiTombolFile();
-      hasil.innerHTML = '<div class="err">Format belum didukung. Pakai: rekaman, gambar (jpg/png), PDF, atau Excel (xlsx/csv).</div>';
+    // panggil Apps Script via fetch (text/plain → tanpa preflight CORS)
+    async function callApi(action, params) {
+      var body = Object.assign({ action: action }, params || {});
+      var r = await fetch(APP_URL, { method: 'POST', body: JSON.stringify(body) });
+      var j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Gagal memproses');
+      return j.result;
     }
-  }
 
-  function kirim() {
-    var masalah = document.getElementById('masalah').value, divisi = document.getElementById('divisi').value, tombol = document.getElementById('tombol'), kartu = document.getElementById('hasilCard'), hasil = document.getElementById('hasil');
-    if (!masalah || masalah.trim().length < 5) { kartu.style.display = 'block'; hasil.innerHTML = '<div class="err">Mohon isi masalahnya dulu (atau pakai "Proses File" untuk lampiran).</div>'; return; }
-    tombol.disabled = true; tombol.textContent = 'Sedang menganalisis...'; kartu.style.display = 'block'; masalahTerakhir = masalah;
-    hasil.innerHTML = loadingHtml('AI sedang membaca pustaka & menyusun analisa + solusi...');
-    panggil("cariSolusi", { masalah: masalah, divisi: divisi }).then(function (res) {
-      tombol.disabled = false; tombol.textContent = '🔎 Cari Solusi';
-      if (res && res.ok) tampilSolusiFinal('<strong>💡 Solusi &amp; Analisa</strong><br><br>', res.jawaban);
-      else hasil.innerHTML = '<div class="err">' + (res ? res.pesan : 'Gagal.') + '</div>';
-    }).catch(function (err) { tombol.disabled = false; tombol.textContent = '🔎 Cari Solusi'; hasil.innerHTML = '<div class="err">Terjadi kesalahan: ' + err.message + '</div>'; });
-  }
-</script>
+    function tab(t) {
+      document.getElementById('viewUp').style.display = (t === 'up') ? 'block' : 'none';
+      document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
+      document.getElementById('navUp').className = (t === 'up') ? 'on' : '';
+      document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
+      if (t === 'hs' && !DATA.length) muat();
+    }
+
+    // ---------- UPLOAD ----------
+    function sliceB64(file, start, end) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function (e) { resolve(e.target.result.split(',')[1]); };
+        r.onerror = reject;
+        r.readAsDataURL(file.slice(start, end));
+      });
+    }
+    async function kirim() {
+      var btn = document.getElementById('btn');
+      var fileInput = document.getElementById('file');
+      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales') };
+      if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
+      if (!fileInput.files.length) return show('err', 'Mohon pilih file video atau foto.');
+      var file = fileInput.files[0];
+      if (file.size > MAX) return show('err', 'Ukuran file ' + mb(file.size) + ' MB melebihi batas 500 MB.');
+      btn.disabled = true;
+      document.getElementById('bar').style.display = 'block';
+      setBar(0);
+      show('ok', '⏳ Mengunggah... jangan tutup halaman (file ' + mb(file.size) + ' MB).');
+      try {
+        var sid = await callApi('mulaiUpload', { fileName: file.name, mimeType: file.type });
+        var fileId = null, start = 0;
+        while (start < file.size) {
+          var end = Math.min(start + CHUNK, file.size);
+          var b64 = await sliceB64(file, start, end);
+          var isLast = end >= file.size;
+          var res = await callApi('uploadChunk', { sid: sid, b64: b64, start: start, total: file.size, isLast: isLast });
+          start = end;
+          setBar(Math.round(start / file.size * 100));
+          if (res && res.done) { fileId = res.fileId; break; }
+        }
+        if (!fileId) throw new Error('Upload tidak selesai. Coba lagi.');
+        show('ok', '⏳ Menyimpan data...');
+        var done = await callApi('catatBaris', { form: form, fileId: fileId, mimeType: file.type });
+        show('ok', '✅ Berhasil! Data tersimpan dengan ID ' + done.id);
+        document.getElementById('f').reset();
+        setBar(100);
+      } catch (err) {
+        show('err', '❌ ' + (err && err.message ? err.message : err));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ---------- DASHBOARD ----------
+    async function muat() {
+      document.getElementById('list').innerHTML = '<div class="loading">Memuat data...</div>';
+      try { DATA = await callApi('getData'); render(); }
+      catch (e) { document.getElementById('list').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+    function render() {
+      var q = document.getElementById('cari').value.toLowerCase();
+      var rows = (DATA || []).filter(function (r) { return !q || (String(r.toko) + r.area + r.sales + (r.jenisToko || '')).toLowerCase().indexOf(q) > -1; });
+      if (!rows.length) { document.getElementById('list').innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
+      document.getElementById('list').innerHTML = rows.map(itemHtml).join('');
+    }
+    function badge(s) {
+      s = String(s || '');
+      if (s === 'Selesai') return '<span class="badge b-ok">Selesai</span>';
+      if (s === 'Error') return '<span class="badge b-err">Error</span>';
+      return '<span class="badge b-proc">' + (s || '-') + '</span>';
+    }
+    function hi(s) {
+      s = esc(s);
+      s = s.replace(/\b(Infinix|itel|VGEN|Tecno)\b/gi, '<b class="brand">$1</b>');
+      s = s.replace(/(~?\d+(?:[.,]\d+)?%|~?\d+\s*(?:unit|pcs|pc))/gi, '<b class="num">$1</b>');
+      return s;
+    }
+    function fld(k, v, cls) {
+      if (!v) return '';
+      var lines = String(v).split(/\r?\n|•|;\s/).map(function (x) { return x.replace(/^[\s\-–•]+/, '').trim(); }).filter(Boolean);
+      var body = (lines.length <= 1)
+        ? '<div class="v">' + hi(lines[0] || v) + '</div>'
+        : '<ul class="vl">' + lines.map(function (l) { return '<li>' + hi(l) + '</li>'; }).join('') + '</ul>';
+      return '<div class="fld ' + (cls || '') + '"><div class="k">' + k + '</div>' + body + '</div>';
+    }
+    function itemHtml(r) {
+      var detail = '';
+      if (r.status === 'Selesai') {
+        detail =
+          '<div class="sec">⚡ Aksi di toko ini</div>' +
+          fld('📊 Pangsa Stok', r.pangsa, 'reko') +
+          fld('🎯 Saran Penempatan', r.rekomendasi, 'reko') +
+          fld('📦 Saran Stok', r.saran, 'reko') +
+          '<div class="sec">🔎 Kondisi toko</div>' +
+          fld('Merek Terdeteksi', r.merek) +
+          fld('Tipe / Model', r.tipe) +
+          fld('Estimasi Stok', r.stok) +
+          fld('Branding & POSM', r.branding) +
+          fld('Lokasi Display', r.display) +
+          fld('Layout Toko', r.layout) +
+          fld('Ringkasan', r.ringkasan);
+      } else if (r.status === 'Error') {
+        detail = fld('Catatan Error', r.catatan);
+      } else {
+        detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
+      }
+      var vid = r.link ? '<a class="vid" href="' + r.link + '" target="_blank">▶️ Buka video/foto</a>' : '';
+      var dl = (r.status === 'Selesai') ? '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>' : '';
+      return '<div class="item" onclick="this.classList.toggle(\'open\')">' +
+        '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
+        '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
+        badge(r.status) + '<span class="chev">▶</span></div>' +
+        '<div class="detail">' + detail + '<div class="aksi">' + vid + dl + '</div></div></div>';
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    async function unduhPdf(ev, id) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget, asli = btn.textContent;
+      btn.textContent = '⏳ Membuat PDF...'; btn.disabled = true;
+      try {
+        var res = await callApi('buatPdf', { id: id });
+        var bin = atob(res.b64), arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        var url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+        var a = document.createElement('a'); a.href = url; a.download = res.name;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      } catch (e) { alert('Gagal membuat PDF: ' + e.message); }
+      btn.textContent = asli; btn.disabled = false;
+    }
+
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function mb(b) { return (b / 1024 / 1024).toFixed(1); }
+    function setBar(p) { document.getElementById('barfill').style.width = p + '%'; }
+    function show(cls, text) { var m = document.getElementById('msg'); m.className = cls; m.textContent = text; }
+  </script>
 </body>
 </html>
