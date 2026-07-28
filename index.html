@@ -93,6 +93,8 @@
         <input type="text" id="area" placeholder="cth: Medan Kota" required>
         <label>Nama Sales <span class="req">*</span></label>
         <input type="text" id="namaSales" placeholder="cth: Budi" required>
+        <label>👥 Promotor di Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
+        <input type="text" id="promotor" placeholder="cth: 3 orang — Oppo 1, Samsung 1, Vivo 1">
         <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
         <input type="file" id="video" accept="video/*">
         <label>📸 Foto Close-up <span style="color:#9aa5b1;font-weight:400;">(opsional, bisa pilih banyak)</span></label>
@@ -167,7 +169,7 @@
 
     async function kirim() {
       var btn = document.getElementById('btn');
-      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales') };
+      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales'), promotor: val('promotor') };
       if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
       var video = document.getElementById('video').files[0] || null;
       var fotos = Array.prototype.slice.call(document.getElementById('fotos').files || []);
@@ -234,6 +236,7 @@
       return '<div class="fld ' + (cls || '') + '"><div class="k">' + k + '</div>' + body + '</div>';
     }
     function itemHtml(r) {
+      var promoBlok = r.promotor ? fld('👥 Promotor di Toko', r.promotor) : '';
       var detail = '';
       if (r.status === 'Selesai') {
         detail =
@@ -254,6 +257,7 @@
       } else {
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
       }
+      detail = promoBlok + detail;
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
       var dl = (r.status === 'Selesai') ? '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>' : '';
