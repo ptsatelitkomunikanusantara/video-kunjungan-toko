@@ -95,6 +95,9 @@
         <input type="text" id="namaSales" placeholder="cth: Budi" required>
         <label>👥 Promotor di Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
         <input type="text" id="promotor" placeholder="cth: 3 orang — Oppo 1, Samsung 1, Vivo 1">
+        <label>📍 Lokasi Toko <span style="color:#9aa5b1;font-weight:400;">(opsional, GPS)</span></label>
+        <button type="button" id="btnGps" onclick="ambilLokasi()" style="width:100%;padding:11px;border:1px solid #0b3d91;background:#eef3ff;color:#0b3d91;border-radius:8px;font-weight:600;cursor:pointer;">📍 Ambil Lokasi Toko</button>
+        <div id="gpsInfo" class="hint">Tekan saat kamu di depan toko (izinkan akses lokasi). Titik GPS toko akan tersimpan.</div>
         <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
         <input type="file" id="video" accept="video/*">
         <label>📸 Foto Close-up <span style="color:#9aa5b1;font-weight:400;">(opsional, bisa pilih banyak)</span></label>
@@ -167,9 +170,27 @@
       return fileId;
     }
 
+    var LOKASI = { lat: '', lng: '' };
+    function ambilLokasi() {
+      var info = document.getElementById('gpsInfo');
+      var b = document.getElementById('btnGps');
+      if (!navigator.geolocation) { info.textContent = '⚠️ HP/browser ini tidak mendukung GPS.'; return; }
+      b.disabled = true; info.textContent = '⏳ Mengambil lokasi...';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        LOKASI.lat = pos.coords.latitude.toFixed(6);
+        LOKASI.lng = pos.coords.longitude.toFixed(6);
+        info.innerHTML = '✅ Lokasi tersimpan: ' + LOKASI.lat + ', ' + LOKASI.lng +
+          ' &nbsp;<a href="https://www.google.com/maps?q=' + LOKASI.lat + ',' + LOKASI.lng + '" target="_blank">buka Maps</a>';
+        b.disabled = false; b.textContent = '📍 Ambil Ulang Lokasi';
+      }, function (err) {
+        info.textContent = '⚠️ Gagal ambil lokasi: ' + ((err && err.message) ? err.message : 'akses ditolak') + '. Pastikan izin lokasi HP aktif.';
+        b.disabled = false;
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }
+
     async function kirim() {
       var btn = document.getElementById('btn');
-      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales'), promotor: val('promotor') };
+      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales'), promotor: val('promotor'), lat: LOKASI.lat, lng: LOKASI.lng };
       if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
       var video = document.getElementById('video').files[0] || null;
       var fotos = Array.prototype.slice.call(document.getElementById('fotos').files || []);
@@ -195,6 +216,9 @@
         var done = await callApi('catatBaris', { form: form, files: { videoId: videoId, photoIds: photoIds } });
         show('ok', '✅ Berhasil! Data tersimpan (ID ' + done.id + ', ' + files.length + ' file).');
         document.getElementById('f').reset();
+        LOKASI = { lat: '', lng: '' };
+        document.getElementById('btnGps').textContent = '📍 Ambil Lokasi Toko';
+        document.getElementById('gpsInfo').textContent = 'Tekan saat kamu di depan toko (izinkan akses lokasi). Titik GPS toko akan tersimpan.';
         setBar(100);
       } catch (err) {
         show('err', '❌ ' + (err && err.message ? err.message : err));
@@ -260,12 +284,13 @@
       detail = promoBlok + detail;
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
+      var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '';
       var dl = (r.status === 'Selesai') ? '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>' : '';
       return '<div class="item" onclick="this.classList.toggle(\'open\')">' +
         '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
         '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
         badge(r.status) + '<span class="chev">▶</span></div>' +
-        '<div class="detail">' + detail + '<div class="aksi">' + vid + dl + '</div></div></div>';
+        '<div class="detail">' + detail + '<div class="aksi">' + vid + mapsBtn + dl + '</div></div></div>';
     }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
