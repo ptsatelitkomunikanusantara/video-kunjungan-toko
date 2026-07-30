@@ -264,18 +264,22 @@
       var detail = '';
       if (r.status === 'Selesai') {
         detail =
-          '<div class="sec">⚡ Aksi di toko ini</div>' +
-          fld('📊 Pangsa Stok', r.pangsa, 'reko') +
-          fld('🎯 Saran Penempatan', r.rekomendasi, 'reko') +
-          fld('📦 Saran Stok', r.saran, 'reko') +
+          '<div class="sec">⚡ Aksi & Solusi</div>' +
+          fld('⭐ Verdict', r.skorRingkas, 'reko') +
+          fld('💡 Solusi Utama (naikkan omzet)', r.ringkasan, 'reko') +
+          fld('🎯 Aksi Prioritas', r.aksi, 'reko') +
+          fld('📊 Gap vs Target Level', r.gap, 'reko') +
+          fld('🔍 Kenapa Stok Begini', r.diagnosa, 'reko') +
+          fld('🧑 Promotor (analisa)', r.promotorAnalisa, 'reko') +
           '<div class="sec">🔎 Kondisi toko</div>' +
+          fld('📈 Pangsa Stok', r.pangsa) +
+          fld('🎯 Rekomendasi Penempatan', r.rekomendasi) +
           fld('Merek Terdeteksi', r.merek) +
           fld('Tipe / Model', r.tipe) +
           fld('Estimasi Stok', r.stok) +
           fld('Branding & POSM', r.branding) +
           fld('Lokasi Display', r.display) +
-          fld('Layout Toko', r.layout) +
-          fld('Ringkasan', r.ringkasan);
+          fld('Layout Toko', r.layout);
       } else if (r.status === 'Error') {
         detail = fld('Catatan Error', r.catatan);
       } else {
@@ -289,8 +293,14 @@
       return '<div class="item" onclick="this.classList.toggle(\'open\')">' +
         '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
         '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
-        badge(r.status) + '<span class="chev">▶</span></div>' +
+        skorChip(r) + badge(r.status) + '<span class="chev">▶</span></div>' +
         '<div class="detail">' + detail + '<div class="aksi">' + vid + mapsBtn + dl + '</div></div></div>';
+    }
+    function skorChip(r) {
+      if (r.status !== 'Selesai' || r.skor == null || r.skor === '') return '';
+      var n = Number(r.skor); if (isNaN(n)) return '';
+      var c = n >= 70 ? '#1a7f37' : (n >= 40 ? '#b7791f' : '#c02b2b');
+      return '<span title="Skor Toko" style="background:' + c + ';color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:11px;margin-right:6px;white-space:nowrap;">' + esc(r.skor) + '</span>';
     }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
