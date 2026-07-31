@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laporan Kunjungan Toko — SKN/Unistar</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #1f2933; margin: 0; padding: 16px; }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.08); padding: 22px; }
+    h1 { font-size: 20px; margin: 0 0 2px; color: #0b3d91; }
+    .sub { font-size: 13px; color: #6b7280; margin: 0 0 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+    input[type=text], input[type=date], input[type=number], select { width: 100%; padding: 11px 12px; border: 1px solid #cbd2d9; border-radius: 9px; font-size: 15px; background: #fff; }
+    .hint { font-size: 12px; color: #9aa5b1; margin-top: 5px; }
+    .btn { width: 100%; margin-top: 22px; padding: 13px; border: 0; border-radius: 9px; background: #0b3d91; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #9aa5b1; cursor: not-allowed; }
+    .btn2 { width: 100%; padding: 11px; border: 1px solid #0b3d91; background: #eef3ff; color: #0b3d91; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    #msg { margin-top: 16px; padding: 12px; border-radius: 9px; font-size: 14px; display: none; }
+    #msg.ok { background: #e3f9e5; color: #0b6b2e; display: block; }
+    #msg.err { background: #ffe3e3; color: #a61b1b; display: block; }
+    .req { color: #d64545; }
+    .box { border: 1px solid #e6ebf2; border-radius: 10px; padding: 4px 14px 14px; margin-top: 8px; background: #fafbfc; }
+    .chk { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; font-size: 14px; font-weight: 600; }
+    .chk input { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>📝 Laporan Kunjungan Toko</h1>
+      <p class="sub">SKN / Unistar — isi saat kamu berada di toko</p>
+      <form id="f" onsubmit="return false;">
+        <label>Tanggal Kunjungan <span class="req">*</span></label>
+        <input type="date" id="tanggalKunjungan" required>
+        <label>Nama Toko <span class="req">*</span></label>
+        <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
+        <label>Level Toko <span class="req">*</span></label>
+        <select id="jenisToko" required>
+          <option value="">-- pilih level toko --</option>
+          <option value="WMD">WMD</option>
+          <option value="RKA">RKA</option>
+          <option value="RMD 1">RMD 1</option>
+          <option value="RMD 2">RMD 2</option>
+          <option value="RMD 3">RMD 3</option>
+          <option value="RMD 4">RMD 4</option>
+          <option value="RMD 5">RMD 5</option>
+          <option value="SR">SR</option>
+        </select>
+        <label>Area / Kota <span class="req">*</span></label>
+        <input type="text" id="area" placeholder="cth: Medan Kota" required>
+        <label>Nama Sales <span class="req">*</span></label>
+        <input type="text" id="namaSales" placeholder="cth: Budi" required>
+
+        <div class="chk"><input type="checkbox" id="adaPromotor" onchange="togglePromotor()"><label for="adaPromotor" style="margin:0;">👥 Ada promotor brand lain di toko ini?</label></div>
+        <div class="box" id="boxPromotor" style="display:none;">
+          <label>Jumlah Promotor</label>
+          <input type="number" id="promotorJumlah" min="0" placeholder="cth: 3">
+          <label>Brand Promotor</label>
+          <input type="text" id="promotorBrand" placeholder="cth: Oppo, Vivo, Samsung">
+          <label>Target Jualan Promotor <span style="color:#9aa5b1;font-weight:400;">(kalau tahu)</span></label>
+          <input type="text" id="promotorTarget" placeholder="cth: Oppo target 50 unit/bln">
+        </div>
+
+        <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
+        <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
+        <div id="gpsInfo" class="hint">Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.</div>
+
+        <button type="button" class="btn" id="btn" onclick="kirim()">Kirim Laporan</button>
+        <div id="msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    var APP_URL = 'https://script.google.com/macros/s/AKfycbxrxIizlkcaFwH1db6vZ-HBTNhojDHpy7lwDpuIli2aDAV-dWnRakgwBjXOnGTq--mOig/exec';
+    var LOKASI = { lat: '', lng: '' };
+
+    async function callApi(action, params) {
+      var body = Object.assign({ action: action }, params || {});
+      var r = await fetch(APP_URL, { method: 'POST', body: JSON.stringify(body) });
+      var j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Gagal memproses');
+      return j.result;
+    }
+
+    function togglePromotor() {
+      document.getElementById('boxPromotor').style.display = document.getElementById('adaPromotor').checked ? 'block' : 'none';
+    }
+
+    function ambilLokasi() {
+      var info = document.getElementById('gpsInfo'), b = document.getElementById('btnGps');
+      if (!navigator.geolocation) { info.textContent = '⚠️ HP/browser ini tidak mendukung GPS.'; return; }
+      b.disabled = true; info.textContent = '⏳ Mengambil lokasi...';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        LOKASI.lat = pos.coords.latitude.toFixed(6);
+        LOKASI.lng = pos.coords.longitude.toFixed(6);
+        info.innerHTML = '✅ Lokasi tersimpan: ' + LOKASI.lat + ', ' + LOKASI.lng;
+        b.disabled = false; b.textContent = '📍 Ambil Ulang Lokasi';
+      }, function (err) {
+        info.textContent = '⚠️ Gagal ambil lokasi: ' + ((err && err.message) ? err.message : 'akses ditolak') + '. Aktifkan izin lokasi HP.';
+        b.disabled = false;
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }
+
+    async function kirim() {
+      var btn = document.getElementById('btn');
+      var form = {
+        tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'),
+        area: val('area'), namaSales: val('namaSales'),
+        promotorJumlah: '', promotorBrand: '', promotorTarget: '',
+        lat: LOKASI.lat, lng: LOKASI.lng
+      };
+      if (document.getElementById('adaPromotor').checked) {
+        form.promotorJumlah = val('promotorJumlah');
+        form.promotorBrand = val('promotorBrand');
+        form.promotorTarget = val('promotorTarget');
+      }
+      if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
+      if (!form.lat || !form.lng) { if (!confirm('Titik lokasi toko belum diambil. Tetap kirim tanpa lokasi?')) return; }
+
+      btn.disabled = true;
+      show('ok', '⏳ Menyimpan laporan...');
+      try {
+        var done = await callApi('simpanKunjunganSales', { form: form });
+        show('ok', '✅ Laporan kunjungan tersimpan. Terima kasih! (No. ' + done.id + ')');
+        document.getElementById('f').reset();
+        document.getElementById('boxPromotor').style.display = 'none';
+        LOKASI = { lat: '', lng: '' };
+        document.getElementById('btnGps').textContent = '📍 Ambil Lokasi Toko';
+        document.getElementById('gpsInfo').textContent = 'Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.';
+      } catch (err) {
+        show('err', '❌ ' + (err && err.message ? err.message : err));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function show(cls, text) { var m = document.getElementById('msg'); m.className = cls; m.textContent = text; }
+  </script>
+</body>
+</html>
