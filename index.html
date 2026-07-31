@@ -64,49 +64,15 @@
 <body>
   <div class="wrap">
     <div class="nav">
-      <button id="navUp" class="on" onclick="tab('up')">📤 Upload</button>
-      <button id="navHs" onclick="tab('hs')">📋 Hasil Kunjungan</button>
+      <button id="navPend" class="on" onclick="tab('pend')">📥 Menunggu Media</button>
+      <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
     </div>
 
-    <!-- ===== UPLOAD ===== -->
-    <div id="viewUp" class="card">
-      <h1>📱 Video Kunjungan Toko</h1>
-      <p class="sub">SKN / Unistar — upload video/foto kunjungan toko</p>
-      <form id="f" onsubmit="return false;">
-        <label>Tanggal Kunjungan <span class="req">*</span></label>
-        <input type="date" id="tanggalKunjungan" required>
-        <label>Nama Toko <span class="req">*</span></label>
-        <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
-        <label>Jenis Toko <span class="req">*</span></label>
-        <select id="jenisToko" required>
-          <option value="">-- pilih jenis toko --</option>
-          <option value="WMD">WMD</option>
-          <option value="RKA">RKA</option>
-          <option value="RMD 1">RMD 1</option>
-          <option value="RMD 2">RMD 2</option>
-          <option value="RMD 3">RMD 3</option>
-          <option value="RMD 4">RMD 4</option>
-          <option value="RMD 5">RMD 5</option>
-          <option value="SR">SR</option>
-        </select>
-        <label>Area / Kota <span class="req">*</span></label>
-        <input type="text" id="area" placeholder="cth: Medan Kota" required>
-        <label>Nama Sales <span class="req">*</span></label>
-        <input type="text" id="namaSales" placeholder="cth: Budi" required>
-        <label>👥 Promotor di Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
-        <input type="text" id="promotor" placeholder="cth: 3 orang — Oppo 1, Samsung 1, Vivo 1">
-        <label>📍 Lokasi Toko <span style="color:#9aa5b1;font-weight:400;">(opsional, GPS)</span></label>
-        <button type="button" id="btnGps" onclick="ambilLokasi()" style="width:100%;padding:11px;border:1px solid #0b3d91;background:#eef3ff;color:#0b3d91;border-radius:8px;font-weight:600;cursor:pointer;">📍 Ambil Lokasi Toko</button>
-        <div id="gpsInfo" class="hint">Tekan saat kamu di depan toko (izinkan akses lokasi). Titik GPS toko akan tersimpan.</div>
-        <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
-        <input type="file" id="video" accept="video/*">
-        <label>📸 Foto Close-up <span style="color:#9aa5b1;font-weight:400;">(opsional, bisa pilih banyak)</span></label>
-        <input type="file" id="fotos" accept="image/*" multiple>
-        <div class="hint">Minimal isi salah satu (video atau foto). 🎥 Video ±10-15 mnt (maks 500MB, rekam 720p) untuk konteks layout. 📸 Foto: dekatkan ke rak stok & tipe HP biar hitungan AI lebih AKURAT.</div>
-        <button type="button" class="btn" id="btn" onclick="kirim()">Kirim</button>
-        <div id="bar"><div id="barfill"></div></div>
-        <div id="msg"></div>
-      </form>
+    <!-- ===== MENUNGGU MEDIA (TS tempel video/foto) ===== -->
+    <div id="viewPend">
+      <div class="topbar"><h1>📥 Kunjungan Menunggu Media</h1><button class="reload" onclick="muatPending()">↻</button></div>
+      <p class="sub">Pilih kunjungan dari sales, lalu tempel video/foto yang dikirim sales.</p>
+      <div id="plist"><div class="loading">Memuat...</div></div>
     </div>
 
     <!-- ===== HASIL ===== -->
@@ -137,11 +103,13 @@
       return j.result;
     }
 
+    var PENDING = [];
     function tab(t) {
-      document.getElementById('viewUp').style.display = (t === 'up') ? 'block' : 'none';
+      document.getElementById('viewPend').style.display = (t === 'pend') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
-      document.getElementById('navUp').className = (t === 'up') ? 'on' : '';
+      document.getElementById('navPend').className = (t === 'pend') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
+      if (t === 'pend') muatPending();
       if (t === 'hs' && !DATA.length) muat();
     }
 
@@ -170,59 +138,62 @@
       return fileId;
     }
 
-    var LOKASI = { lat: '', lng: '' };
-    function ambilLokasi() {
-      var info = document.getElementById('gpsInfo');
-      var b = document.getElementById('btnGps');
-      if (!navigator.geolocation) { info.textContent = '⚠️ HP/browser ini tidak mendukung GPS.'; return; }
-      b.disabled = true; info.textContent = '⏳ Mengambil lokasi...';
-      navigator.geolocation.getCurrentPosition(function (pos) {
-        LOKASI.lat = pos.coords.latitude.toFixed(6);
-        LOKASI.lng = pos.coords.longitude.toFixed(6);
-        info.innerHTML = '✅ Lokasi tersimpan: ' + LOKASI.lat + ', ' + LOKASI.lng +
-          ' &nbsp;<a href="https://www.google.com/maps?q=' + LOKASI.lat + ',' + LOKASI.lng + '" target="_blank">buka Maps</a>';
-        b.disabled = false; b.textContent = '📍 Ambil Ulang Lokasi';
-      }, function (err) {
-        info.textContent = '⚠️ Gagal ambil lokasi: ' + ((err && err.message) ? err.message : 'akses ditolak') + '. Pastikan izin lokasi HP aktif.';
-        b.disabled = false;
-      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    // ---------- MENUNGGU MEDIA (TS) ----------
+    async function muatPending() {
+      document.getElementById('plist').innerHTML = '<div class="loading">Memuat...</div>';
+      try { PENDING = await callApi('getPending'); renderPending(); }
+      catch (e) { document.getElementById('plist').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
     }
-
-    async function kirim() {
-      var btn = document.getElementById('btn');
-      var form = { tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'), area: val('area'), namaSales: val('namaSales'), promotor: val('promotor'), lat: LOKASI.lat, lng: LOKASI.lng };
-      if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
-      var video = document.getElementById('video').files[0] || null;
-      var fotos = Array.prototype.slice.call(document.getElementById('fotos').files || []);
-      if (!video && !fotos.length) return show('err', 'Minimal upload 1 video atau 1 foto.');
-      if (video && video.size > MAX) return show('err', 'Video ' + mb(video.size) + ' MB melebihi batas 500 MB.');
-
+    function renderPending() {
+      if (!PENDING.length) { document.getElementById('plist').innerHTML = '<div class="empty">Tidak ada kunjungan menunggu media. 🎉</div>'; return; }
+      document.getElementById('plist').innerHTML = PENDING.map(pendingItemHtml).join('');
+    }
+    function pendingItemHtml(r) {
+      var id = esc(r.id);
+      var promoBlok = r.promotor ? fld('👥 Promotor di Toko', r.promotor) : '';
+      var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '<span class="hint">📍 lokasi tidak diambil sales</span>';
+      return '<div class="item open" id="pi_' + id + '">' +
+        '<div class="head" onclick="this.parentNode.classList.toggle(\'open\')">' +
+          '<div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
+          '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
+          '<span class="badge b-proc">Menunggu Media</span><span class="chev">▶</span></div>' +
+        '<div class="detail">' + promoBlok +
+          '<div class="aksi" style="margin:8px 0 4px;">' + mapsBtn + '</div>' +
+          '<label>🎥 Video (opsional)</label><input type="file" accept="video/*" id="vid_' + id + '">' +
+          '<label>📸 Foto (opsional, bisa banyak)</label><input type="file" accept="image/*" multiple id="fot_' + id + '">' +
+          '<div class="hint">Tempel video/foto yang dikirim sales. Minimal 1 file.</div>' +
+          '<button class="btn" onclick="prosesMedia(event,\'' + id + '\')">Upload & Proses</button>' +
+          '<div id="bar_' + id + '" style="height:8px;background:#e4e7eb;border-radius:5px;margin-top:12px;overflow:hidden;display:none;"><div id="fill_' + id + '" style="height:100%;width:0%;background:#0b3d91;transition:width .2s;"></div></div>' +
+          '<div id="msg_' + id + '" class="hint" style="margin-top:8px;"></div>' +
+        '</div></div>';
+    }
+    async function prosesMedia(ev, id) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget;
+      var video = document.getElementById('vid_' + id).files[0] || null;
+      var fotos = Array.prototype.slice.call(document.getElementById('fot_' + id).files || []);
+      var msg = document.getElementById('msg_' + id);
+      if (!video && !fotos.length) { msg.textContent = '⚠️ Pilih minimal 1 video atau foto.'; return; }
+      if (video && video.size > MAX) { msg.textContent = '⚠️ Video ' + mb(video.size) + ' MB melebihi batas 500 MB.'; return; }
       var files = (video ? [video] : []).concat(fotos);
-      var totalBytes = files.reduce(function (s, f) { return s + f.size; }, 0), doneBytes = 0;
-      btn.disabled = true;
-      document.getElementById('bar').style.display = 'block';
-      setBar(0);
-      show('ok', '⏳ Mengunggah ' + files.length + ' file... jangan tutup halaman.');
+      var total = files.reduce(function (s, f) { return s + f.size; }, 0), done = 0;
+      var bar = document.getElementById('bar_' + id), fill = document.getElementById('fill_' + id);
+      btn.disabled = true; bar.style.display = 'block';
+      msg.textContent = '⏳ Mengunggah ' + files.length + ' file... jangan tutup halaman.';
       try {
         var videoId = null, photoIds = [];
         for (var i = 0; i < files.length; i++) {
           var f = files[i];
-          var fid = await uploadOneFile(f, function (sent) { setBar(Math.round((doneBytes + sent) / totalBytes * 100)); });
+          var fid = await uploadOneFile(f, function (sent) { fill.style.width = Math.round((done + sent) / total * 100) + '%'; });
           if (f === video) videoId = fid; else photoIds.push(fid);
-          doneBytes += f.size;
-          setBar(Math.round(doneBytes / totalBytes * 100));
+          done += f.size; fill.style.width = Math.round(done / total * 100) + '%';
         }
-        show('ok', '⏳ Menyimpan data...');
-        var done = await callApi('catatBaris', { form: form, files: { videoId: videoId, photoIds: photoIds } });
-        show('ok', '✅ Berhasil! Data tersimpan (ID ' + done.id + ', ' + files.length + ' file).');
-        document.getElementById('f').reset();
-        LOKASI = { lat: '', lng: '' };
-        document.getElementById('btnGps').textContent = '📍 Ambil Lokasi Toko';
-        document.getElementById('gpsInfo').textContent = 'Tekan saat kamu di depan toko (izinkan akses lokasi). Titik GPS toko akan tersimpan.';
-        setBar(100);
+        msg.textContent = '⏳ Menyimpan...';
+        await callApi('lampirkanMedia', { id: id, files: { videoId: videoId, photoIds: photoIds } });
+        msg.textContent = '✅ Media terpasang! Analisa berjalan otomatis (cek tab Hasil beberapa menit lagi).';
+        setTimeout(muatPending, 1500);
       } catch (err) {
-        show('err', '❌ ' + (err && err.message ? err.message : err));
-      } finally {
+        msg.textContent = '❌ ' + (err && err.message ? err.message : err);
         btn.disabled = false;
       }
     }
@@ -235,7 +206,8 @@
     }
     function render() {
       var q = document.getElementById('cari').value.toLowerCase();
-      var rows = (DATA || []).filter(function (r) { return !q || (String(r.toko) + r.area + r.sales + (r.jenisToko || '')).toLowerCase().indexOf(q) > -1; });
+      var rows = (DATA || []).filter(function (r) { return r.status !== 'Menunggu Media'; })
+        .filter(function (r) { return !q || (String(r.toko) + r.area + r.sales + (r.jenisToko || '')).toLowerCase().indexOf(q) > -1; });
       if (!rows.length) { document.getElementById('list').innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
       document.getElementById('list').innerHTML = rows.map(itemHtml).join('');
     }
@@ -319,10 +291,10 @@
       btn.textContent = asli; btn.disabled = false;
     }
 
-    function val(id) { return document.getElementById(id).value.trim(); }
     function mb(b) { return (b / 1024 / 1024).toFixed(1); }
-    function setBar(p) { document.getElementById('barfill').style.width = p + '%'; }
-    function show(cls, text) { var m = document.getElementById('msg'); m.className = cls; m.textContent = text; }
+
+    // Muat daftar "Menunggu Media" saat halaman dibuka
+    muatPending();
   </script>
 </body>
 </html>
