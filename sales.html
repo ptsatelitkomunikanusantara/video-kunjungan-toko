@@ -63,6 +63,13 @@
           <input type="text" id="promotorTarget" placeholder="cth: Oppo target 50 unit/bln">
         </div>
 
+        <label>📦 Pengambilan Bulan Ini <span style="color:#9aa5b1;font-weight:400;">(unit — kalau tahu)</span></label>
+        <div style="display:flex; gap:10px;">
+          <input type="number" id="ambilInfinix" min="0" placeholder="Infinix (unit)">
+          <input type="number" id="ambilItel" min="0" placeholder="itel (unit)">
+        </div>
+        <div class="hint">Jumlah unit yang toko ini ambil/order bulan ini. Dipakai menghitung pencapaian target.</div>
+
         <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
         <div id="gpsInfo" class="hint">Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.</div>
@@ -110,6 +117,7 @@
         tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'),
         area: val('area'), namaSales: val('namaSales'),
         promotorJumlah: '', promotorBrand: '', promotorTarget: '',
+        pengambilanInfinix: val('ambilInfinix'), pengambilanItel: val('ambilItel'),
         lat: LOKASI.lat, lng: LOKASI.lng
       };
       if (document.getElementById('adaPromotor').checked) {
