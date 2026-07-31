@@ -157,7 +157,7 @@
           '<div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
           '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
           '<span class="badge b-proc">Menunggu Media</span><span class="chev">▶</span></div>' +
-        '<div class="detail">' + promoBlok +
+        '<div class="detail">' + capaFld(r) + promoBlok +
           '<div class="aksi" style="margin:8px 0 4px;">' + mapsBtn + '</div>' +
           '<label>🎥 Video (opsional)</label><input type="file" accept="video/*" id="vid_' + id + '">' +
           '<label>📸 Foto (opsional, bisa banyak)</label><input type="file" accept="image/*" multiple id="fot_' + id + '">' +
@@ -231,6 +231,16 @@
         : '<ul class="vl">' + lines.map(function (l) { return '<li>' + hi(l) + '</li>'; }).join('') + '</ul>';
       return '<div class="fld ' + (cls || '') + '"><div class="k">' + k + '</div>' + body + '</div>';
     }
+    function capaTxt(r) {
+      var p = [];
+      if (r.capaInfinix) p.push('Infinix ' + r.capaInfinix.pct + '% (ambil ' + r.capaInfinix.ambil + ' / target ' + r.capaInfinix.target + ')');
+      if (r.capaItel) p.push('itel ' + r.capaItel.pct + '% (ambil ' + r.capaItel.ambil + ' / target ' + r.capaItel.target + ')');
+      return p.join('\n');
+    }
+    function capaFld(r) {
+      var t = capaTxt(r);
+      return t ? fld('📦 CAPA Pengambilan (vs target)', t, 'reko') : '';
+    }
     function itemHtml(r) {
       var promoBlok = r.promotor ? fld('👥 Promotor di Toko', r.promotor) : '';
       var detail = '';
@@ -257,7 +267,7 @@
       } else {
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
       }
-      detail = promoBlok + detail;
+      detail = capaFld(r) + promoBlok + detail;
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
       var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '';
