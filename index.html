@@ -460,14 +460,15 @@
       } else {
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
       }
-      detail = capaFld(r) + trenFld(r) + promoBlok + detail;
+      var stokBlok = r.stokPromotor ? fld('📦 Stok diisi promotor', r.stokPromotor) : '';
+      detail = capaFld(r) + trenFld(r) + stokBlok + promoBlok + detail;
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
       var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '';
       var dl = (r.status === 'Selesai') ? '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>' : '';
       return '<div class="item" onclick="this.classList.toggle(\'open\')">' +
-        '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
-        '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
+        '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + sumberTag(r) + '</div>' +
+        '<div class="meta">' + (r.area ? esc(r.area) + ' • ' : '') + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
         skorChip(r) + badge(r.status) + '<span class="chev">▶</span></div>' +
         '<div class="detail">' + detail + '<div class="aksi">' + vid + mapsBtn + dl + '</div></div></div>';
     }
@@ -476,6 +477,11 @@
       var n = Number(r.skor); if (isNaN(n)) return '';
       var c = n >= 70 ? '#1a7f37' : (n >= 40 ? '#b7791f' : '#c02b2b');
       return '<span title="Skor Toko" style="background:' + c + ';color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:11px;margin-right:6px;white-space:nowrap;">' + esc(r.skor) + '</span>';
+    }
+    function sumberTag(r) {
+      return r.sumber === 'Promotor'
+        ? '<span title="Data dari promotor" style="font-size:10px;font-weight:700;color:#7c3aed;background:#f3e8ff;padding:2px 7px;border-radius:6px;margin-left:4px;vertical-align:middle;">👤 Promotor</span>'
+        : '';
     }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
