@@ -4,7 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Video Kunjungan Toko — SKN/Unistar</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
+    #peta { height: 68vh; min-height: 360px; border-radius: 12px; z-index: 0; }
+    #mapinfo { font-size: 12px; color: #51606e; margin: 10px 2px 0; line-height: 1.6; }
+    .leaflet-popup-content { font-size: 13px; line-height: 1.4; }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #1f2933; margin: 0; padding: 16px; }
     .wrap { max-width: 620px; margin: 0 auto; }
@@ -67,6 +72,7 @@
       <button id="navPend" class="on" onclick="tab('pend')">📥 Menunggu Media</button>
       <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
       <button id="navSum" onclick="tab('sum')">📊 Ringkasan</button>
+      <button id="navMap" onclick="tab('map')">🗺️ Peta</button>
     </div>
 
     <!-- ===== MENUNGGU MEDIA (TS tempel video/foto) ===== -->
@@ -90,6 +96,13 @@
     <div id="viewSum" style="display:none;">
       <div class="topbar"><h1>📊 Ringkasan</h1><button class="reload" onclick="muatSum()">↻</button></div>
       <div id="sumbox"><div class="loading">Memuat data...</div></div>
+    </div>
+
+    <!-- ===== PETA SEBARAN TOKO ===== -->
+    <div id="viewMap" style="display:none;">
+      <div class="topbar"><h1>🗺️ Peta Sebaran Toko</h1><button class="reload" onclick="muatMap()">↻</button></div>
+      <div id="peta"></div>
+      <div id="mapinfo">Memuat peta...</div>
     </div>
   </div>
 
@@ -115,12 +128,15 @@
       document.getElementById('viewPend').style.display = (t === 'pend') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
       document.getElementById('viewSum').style.display = (t === 'sum') ? 'block' : 'none';
+      document.getElementById('viewMap').style.display = (t === 'map') ? 'block' : 'none';
       document.getElementById('navPend').className = (t === 'pend') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
       document.getElementById('navSum').className = (t === 'sum') ? 'on' : '';
+      document.getElementById('navMap').className = (t === 'map') ? 'on' : '';
       if (t === 'pend') muatPending();
       if (t === 'hs' && !DATA.length) muat();
       if (t === 'sum') muatSum();
+      if (t === 'map') muatMap();
     }
 
     // ---------- UPLOAD ----------
@@ -337,6 +353,49 @@
         '<div class="sec">📍 Per Area</div>' + tabelGrup('Area', grup(function (r) { return r.area; }, done), true) +
         '<div class="sec">🏷️ Per Level Toko</div>' + tabelGrup('Level', grup(function (r) { return r.jenisToko; }, done), true) +
         '<div class="sec">🧑‍💼 Per Sales</div>' + tabelGrup('Sales', grup(function (r) { return r.sales; }, done), false);
+    }
+
+    // ========== PETA SEBARAN TOKO (Leaflet + OpenStreetMap, gratis) ==========
+    var MAP = null, MAPLAYER = null;
+    async function muatMap() {
+      var info = document.getElementById('mapinfo');
+      try { if (!DATA.length) { DATA = await callApi('getData'); buildTren(); } }
+      catch (e) { info.textContent = 'Gagal memuat data: ' + e.message; return; }
+      if (typeof L === 'undefined') { info.innerHTML = '⚠️ Peta gagal dimuat. Cek koneksi internet lalu tekan ↻.'; return; }
+
+      if (!MAP) {
+        MAP = L.map('peta');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(MAP);
+      }
+      if (MAPLAYER) MAP.removeLayer(MAPLAYER);
+      MAPLAYER = L.layerGroup().addTo(MAP);
+
+      var pts = [], tanpaLokasi = 0;
+      (DATA || []).forEach(function (r) {
+        var la = parseFloat(r.lat), ln = parseFloat(r.lng);
+        if (isNaN(la) || isNaN(ln)) { tanpaLokasi++; return; }
+        var n = numSkor(r);
+        var c = warnaSkor(n);
+        var capa = r.capaInfinix ? ('CAPA Infinix ' + r.capaInfinix.pct + '%') : '';
+        L.circleMarker([la, ln], { radius: 9, color: '#fff', weight: 2, fillColor: c, fillOpacity: 0.9 })
+          .bindPopup('<b>' + esc(r.toko || '(tanpa nama)') + '</b>' + (r.jenisToko ? ' [' + esc(r.jenisToko) + ']' : '') + '<br>' +
+            (n != null ? 'Skor: <b>' + n + '</b><br>' : '') + (capa ? capa + '<br>' : '') +
+            esc(r.area) + ' • ' + esc(r.sales) + '<br>' + esc(r.tanggal) +
+            (r.maps ? '<br><a href="' + r.maps + '" target="_blank">Buka di Google Maps</a>' : ''))
+          .addTo(MAPLAYER);
+        pts.push([la, ln]);
+      });
+
+      if (pts.length) {
+        info.innerHTML = '🟢 kuat (skor ≥70) &nbsp; 🟡 sedang (40–69) &nbsp; 🔴 lemah (&lt;40) &nbsp; ⚪ belum dinilai' +
+          (tanpaLokasi ? ' <br>⚠️ ' + tanpaLokasi + ' toko belum ada lokasi GPS (tak muncul di peta).' : '');
+        MAP.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+      } else {
+        info.innerHTML = 'Belum ada toko dengan lokasi GPS. Minta sales tekan "Ambil Lokasi Toko" saat lapor.';
+        MAP.setView([-2.5, 118], 4);
+      }
+      // container tadinya tersembunyi -> paksa hitung ulang ukuran
+      setTimeout(function () { MAP.invalidateSize(); if (pts.length) MAP.fitBounds(pts, { padding: [30, 30], maxZoom: 15 }); }, 200);
     }
     function render() {
       var q = document.getElementById('cari').value.toLowerCase();
