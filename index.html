@@ -66,6 +66,7 @@
     <div class="nav">
       <button id="navPend" class="on" onclick="tab('pend')">📥 Menunggu Media</button>
       <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
+      <button id="navSum" onclick="tab('sum')">📊 Ringkasan</button>
     </div>
 
     <!-- ===== MENUNGGU MEDIA (TS tempel video/foto) ===== -->
@@ -83,6 +84,12 @@
         <button class="reload" onclick="muat()">↻</button>
       </div>
       <div id="list"><div class="loading">Memuat data...</div></div>
+    </div>
+
+    <!-- ===== RINGKASAN AGREGAT ===== -->
+    <div id="viewSum" style="display:none;">
+      <div class="topbar"><h1>📊 Ringkasan</h1><button class="reload" onclick="muatSum()">↻</button></div>
+      <div id="sumbox"><div class="loading">Memuat data...</div></div>
     </div>
   </div>
 
@@ -107,10 +114,13 @@
     function tab(t) {
       document.getElementById('viewPend').style.display = (t === 'pend') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
+      document.getElementById('viewSum').style.display = (t === 'sum') ? 'block' : 'none';
       document.getElementById('navPend').className = (t === 'pend') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
+      document.getElementById('navSum').className = (t === 'sum') ? 'on' : '';
       if (t === 'pend') muatPending();
       if (t === 'hs' && !DATA.length) muat();
+      if (t === 'sum') muatSum();
     }
 
     // ---------- UPLOAD ----------
@@ -201,8 +211,132 @@
     // ---------- DASHBOARD ----------
     async function muat() {
       document.getElementById('list').innerHTML = '<div class="loading">Memuat data...</div>';
-      try { DATA = await callApi('getData'); render(); }
+      try { DATA = await callApi('getData'); buildTren(); render(); }
       catch (e) { document.getElementById('list').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+
+    // ========== TREN ANTAR-KUNJUNGAN ==========
+    var TREN = {};   // id kunjungan -> objek kunjungan SEBELUMNYA (toko sama)
+    function normToko(r) {
+      return String(r.toko || '').toLowerCase().replace(/\s+/g, ' ').trim() + '|' + String(r.area || '').toLowerCase().trim();
+    }
+    // DATA urut terbaru->lama; untuk tiap baris, "sebelumnya" = kemunculan berikutnya (indeks lebih besar) dgn toko sama.
+    function buildTren() {
+      TREN = {};
+      for (var i = 0; i < DATA.length; i++) {
+        var k = normToko(DATA[i]);
+        for (var j = i + 1; j < DATA.length; j++) {
+          if (normToko(DATA[j]) === k) { TREN[DATA[i].id] = DATA[j]; break; }
+        }
+      }
+    }
+    function deltaTxt(now, then, label, suf) {
+      if (now == null || now === '' || then == null || then === '') return null;
+      var a = Number(now), b = Number(then);
+      if (isNaN(a) || isNaN(b)) return null;
+      var d = a - b, arr = d > 0 ? ('▲ +' + d) : (d < 0 ? ('▼ ' + d) : '= 0');
+      return label + ': ' + b + (suf || '') + ' → ' + a + (suf || '') + ' (' + arr + ')';
+    }
+    function trenFld(r) {
+      var p = TREN[r.id]; if (!p) return '';
+      var lines = [];
+      var s = deltaTxt(r.skor, p.skor, 'Skor', ''); if (s) lines.push(s);
+      if (r.capaInfinix && p.capaInfinix) { var ci = deltaTxt(r.capaInfinix.pct, p.capaInfinix.pct, 'CAPA Infinix', '%'); if (ci) lines.push(ci); }
+      if (r.capaItel && p.capaItel) { var cit = deltaTxt(r.capaItel.pct, p.capaItel.pct, 'CAPA itel', '%'); if (cit) lines.push(cit); }
+      if (!lines.length) return '';
+      return fld('📈 Dibanding kunjungan lalu (' + esc(p.tanggal) + ')', lines.join('\n'), 'reko');
+    }
+
+    // ========== RINGKASAN AGREGAT ==========
+    async function muatSum() {
+      document.getElementById('sumbox').innerHTML = '<div class="loading">Memuat data...</div>';
+      try {
+        if (!DATA.length) { DATA = await callApi('getData'); buildTren(); }
+        renderSum();
+      } catch (e) { document.getElementById('sumbox').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+    function avgOf(arr) { if (!arr.length) return null; var s = 0; for (var i = 0; i < arr.length; i++) s += arr[i]; return Math.round(s / arr.length); }
+    function numSkor(r) { return (r.skor !== '' && r.skor != null && !isNaN(Number(r.skor))) ? Number(r.skor) : null; }
+    function warnaSkor(n) { return n == null ? '#6b7280' : (n >= 70 ? '#1a7f37' : (n >= 40 ? '#b7791f' : '#c02b2b')); }
+    function tile(label, val, warna) {
+      return '<div style="flex:1;min-width:120px;background:#fff;border-radius:11px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:12px 14px;">' +
+        '<div style="font-size:22px;font-weight:800;color:' + (warna || '#0b3d91') + ';line-height:1.1;">' + val + '</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:3px;">' + label + '</div></div>';
+    }
+    function grup(keyFn, done) {
+      var m = {};
+      done.forEach(function (r) { var k = keyFn(r) || '(kosong)'; (m[k] = m[k] || []).push(r); });
+      return m;
+    }
+    function tabelGrup(judul, m, kolCapa) {
+      var keys = []; for (var k in m) if (m.hasOwnProperty(k)) keys.push(k);
+      if (!keys.length) return '';
+      keys.sort(function (a, b) { return (avgOf(m[b].map(numSkor).filter(function (x) { return x != null; })) || 0) - (avgOf(m[a].map(numSkor).filter(function (x) { return x != null; })) || 0); });
+      var head = '<tr style="text-align:left;color:#6b7280;font-size:11px;"><th style="padding:6px 8px;">' + judul + '</th><th style="padding:6px 8px;">Toko</th><th style="padding:6px 8px;">Rata Skor</th>' + (kolCapa ? '<th style="padding:6px 8px;">CAPA Infinix</th>' : '') + '</tr>';
+      var body = keys.map(function (k) {
+        var rows = m[k];
+        var rs = avgOf(rows.map(numSkor).filter(function (x) { return x != null; }));
+        var rc = kolCapa ? avgOf(rows.filter(function (r) { return r.capaInfinix; }).map(function (r) { return r.capaInfinix.pct; })) : null;
+        return '<tr style="border-top:1px solid #eef1f4;font-size:13px;">' +
+          '<td style="padding:6px 8px;font-weight:600;">' + esc(k) + '</td>' +
+          '<td style="padding:6px 8px;">' + rows.length + '</td>' +
+          '<td style="padding:6px 8px;color:' + warnaSkor(rs) + ';font-weight:700;">' + (rs == null ? '-' : rs) + '</td>' +
+          (kolCapa ? '<td style="padding:6px 8px;">' + (rc == null ? '-' : (rc + '%')) + '</td>' : '') + '</tr>';
+      }).join('');
+      return '<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+    }
+    function renderSum() {
+      var rows = DATA || [];
+      var done = rows.filter(function (r) { return r.status === 'Selesai'; });
+      if (!rows.length) { document.getElementById('sumbox').innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
+
+      var skorArr = done.map(numSkor).filter(function (x) { return x != null; });
+      var capaIArr = rows.filter(function (r) { return r.capaInfinix; }).map(function (r) { return r.capaInfinix.pct; });
+      var capaTArr = rows.filter(function (r) { return r.capaItel; }).map(function (r) { return r.capaItel.pct; });
+      var rataSkor = avgOf(skorArr);
+
+      var tiles = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;">' +
+        tile('Toko dianalisa', done.length + ' <span style="font-size:12px;color:#9aa5b1;">/ ' + rows.length + '</span>') +
+        tile('Rata Skor Toko', rataSkor == null ? '-' : rataSkor, warnaSkor(rataSkor)) +
+        tile('Rata CAPA Infinix', capaIArr.length ? (avgOf(capaIArr) + '%') : '-') +
+        tile('Rata CAPA itel', capaTArr.length ? (avgOf(capaTArr) + '%') : '-') +
+        '</div>';
+
+      // Prioritas: skor terendah (maks 6)
+      var prio = done.filter(function (r) { return numSkor(r) != null; }).sort(function (a, b) { return numSkor(a) - numSkor(b); }).slice(0, 6);
+      var prioHtml = prio.length ? prio.map(function (r) {
+        var n = numSkor(r);
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #eef1f4;">' +
+          '<span style="background:' + warnaSkor(n) + ';color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:11px;min-width:34px;text-align:center;">' + n + '</span>' +
+          '<div><div style="font-weight:700;font-size:14px;">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
+          '<div style="font-size:12px;color:#6b7280;">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div></div>';
+      }).join('') : '<div class="hint" style="padding:8px 0;">Belum ada toko dengan skor.</div>';
+
+      // Tren: toko membaik / memburuk (dari skor)
+      var naik = [], turun = [];
+      done.forEach(function (r) {
+        var p = TREN[r.id]; if (!p) return;
+        var a = numSkor(r), b = numSkor(p); if (a == null || b == null) return;
+        var d = a - b; if (d > 0) naik.push({ r: r, d: d, b: b, a: a }); else if (d < 0) turun.push({ r: r, d: d, b: b, a: a });
+      });
+      function trenList(arr, warna) {
+        return arr.sort(function (x, y) { return Math.abs(y.d) - Math.abs(x.d); }).slice(0, 5).map(function (o) {
+          return '<div style="font-size:13px;padding:5px 0;border-top:1px solid #eef1f4;"><b>' + esc(o.r.toko) + '</b> ' +
+            '<span style="color:' + warna + ';font-weight:700;">' + o.b + ' → ' + o.a + ' (' + (o.d > 0 ? '+' + o.d : o.d) + ')</span></div>';
+        }).join('');
+      }
+      var trenHtml = (naik.length || turun.length)
+        ? ((naik.length ? '<div class="k" style="color:#1a7f37;margin-top:6px;">⬆️ Membaik</div>' + trenList(naik, '#1a7f37') : '') +
+           (turun.length ? '<div class="k" style="color:#c02b2b;margin-top:10px;">⬇️ Menurun</div>' + trenList(turun, '#c02b2b') : ''))
+        : '<div class="hint" style="padding:8px 0;">Belum ada toko yang dikunjungi ≥2 kali (tren muncul setelah kunjungan ulang).</div>';
+
+      document.getElementById('sumbox').innerHTML =
+        tiles +
+        '<div class="sec">⚠️ Prioritas Kunjungan (skor terendah)</div>' + prioHtml +
+        '<div class="sec">📈 Tren Antar-Kunjungan</div>' + trenHtml +
+        '<div class="sec">📍 Per Area</div>' + tabelGrup('Area', grup(function (r) { return r.area; }, done), true) +
+        '<div class="sec">🏷️ Per Level Toko</div>' + tabelGrup('Level', grup(function (r) { return r.jenisToko; }, done), true) +
+        '<div class="sec">🧑‍💼 Per Sales</div>' + tabelGrup('Sales', grup(function (r) { return r.sales; }, done), false);
     }
     function render() {
       var q = document.getElementById('cari').value.toLowerCase();
@@ -267,7 +401,7 @@
       } else {
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
       }
-      detail = capaFld(r) + promoBlok + detail;
+      detail = capaFld(r) + trenFld(r) + promoBlok + detail;
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
       var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '';
