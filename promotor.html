@@ -25,23 +25,33 @@
     #msg.ok { background: #e3f9e5; color: #0b6b2e; display: block; }
     #msg.err { background: #ffe3e3; color: #a61b1b; display: block; }
     .req { color: #d64545; }
+    .peran { display: flex; gap: 10px; margin-bottom: 4px; }
+    .prole { flex: 1; padding: 14px; border: 2px solid #cbd2d9; background: #fff; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; color: #51606e; }
+    .prole.on { border-color: #6d28d9; background: #f3e8ff; color: #6d28d9; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>👤 Laporan Promotor</h1>
+      <h1>📝 Laporan Kunjungan Toko</h1>
       <p class="sub">SKN / Unistar — isi saat kamu berada di toko</p>
-      <form id="f" onsubmit="return false;">
+
+      <label>Kamu siapa? <span class="req">*</span></label>
+      <div class="peran">
+        <button type="button" class="prole" id="btnProm" onclick="pilihPeran('Promotor')">👤 Promotor</button>
+        <button type="button" class="prole" id="btnSales" onclick="pilihPeran('Sales')">🧑‍💼 Sales</button>
+      </div>
+
+      <form id="f" onsubmit="return false;" style="display:none;">
         <label>Tanggal <span class="req">*</span></label>
         <input type="date" id="tanggalKunjungan" required>
-        <label>Nama Promotor <span class="req">*</span></label>
+        <label>Nama <span class="req">*</span></label>
         <input type="text" id="namaPromotor" placeholder="cth: Sari" required>
         <label>Nama Toko <span class="req">*</span></label>
         <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
 
-        <label>Stok di Toko — Jumlah &amp; Tipe <span class="req">*</span></label>
-        <textarea id="stokPromotor" placeholder="Tulis stok yang ada, contoh:&#10;Infinix Hot 40 - 5 unit&#10;itel A70 - 3 unit&#10;VGEN charger - 8 pcs" required></textarea>
+        <label>Stok di Toko — Jumlah &amp; Tipe <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
+        <textarea id="stokPromotor" placeholder="Tulis stok yang ada, contoh:&#10;Infinix Hot 40 - 5 unit&#10;itel A70 - 3 unit&#10;VGEN charger - 8 pcs"></textarea>
 
         <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
         <input type="file" accept="video/*" id="vid">
@@ -65,6 +75,14 @@
     var MAX = 500 * 1024 * 1024;
     var CHUNK = 5 * 1024 * 1024;
     var LOKASI = { lat: '', lng: '' };
+    var PERAN = '';
+
+    function pilihPeran(p) {
+      PERAN = p;
+      document.getElementById('btnProm').className = 'prole' + (p === 'Promotor' ? ' on' : '');
+      document.getElementById('btnSales').className = 'prole' + (p === 'Sales' ? ' on' : '');
+      document.getElementById('f').style.display = 'block';
+    }
 
     async function callApi(action, params) {
       var body = Object.assign({ action: action }, params || {});
@@ -115,14 +133,16 @@
 
     async function kirim() {
       var btn = document.getElementById('btn');
+      if (!PERAN) return show('err', 'Pilih dulu: kamu Promotor atau Sales?');
       var form = {
-        tanggalKunjungan: val('tanggalKunjungan'), namaPromotor: val('namaPromotor'),
+        peran: PERAN, tanggalKunjungan: val('tanggalKunjungan'),
+        nama: val('namaPromotor'), namaPromotor: val('namaPromotor'),
         namaToko: val('namaToko'), stokPromotor: val('stokPromotor'),
         lat: LOKASI.lat, lng: LOKASI.lng
       };
       var video = document.getElementById('vid').files[0] || null;
       var fotos = Array.prototype.slice.call(document.getElementById('fot').files || []);
-      if (!form.tanggalKunjungan || !form.namaPromotor || !form.namaToko || !form.stokPromotor) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
+      if (!form.tanggalKunjungan || !form.namaPromotor || !form.namaToko) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
       if (!video && !fotos.length) return show('err', 'Mohon upload minimal 1 foto atau video.');
       if (video && video.size > MAX) return show('err', 'Video ' + mb(video.size) + ' MB melebihi batas 500 MB.');
       if (!form.lat || !form.lng) { if (!confirm('Titik lokasi toko belum diambil. Tetap kirim tanpa lokasi?')) return; }
