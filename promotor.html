@@ -159,7 +159,7 @@
         }
         show('ok', '⏳ Menyimpan...');
         var res = await callApi('simpanKunjunganPromotor', { form: form, files: { videoId: videoId, photoIds: photoIds } });
-        show('ok', '✅ Laporan terkirim & masuk sistem. Tidak perlu dikirim ke mana-mana lagi. (No. ' + res.id + ')');
+        show('ok', '✅ Laporan terkirim! Terima kasih. (No. ' + res.id + ')');
         document.getElementById('f').reset();
         bar.style.display = 'none'; fill.style.width = '0%';
         LOKASI = { lat: '', lng: '' };
