@@ -50,14 +50,11 @@
         <label>Nama Toko <span class="req">*</span></label>
         <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
 
-        <label>Stok di Toko — Jumlah &amp; Tipe <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
-        <textarea id="stokPromotor" placeholder="Tulis stok yang ada, contoh:&#10;Infinix Hot 40 - 5 unit&#10;itel A70 - 3 unit&#10;VGEN charger - 8 pcs"></textarea>
-
-        <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(opsional)</span></label>
+        <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(rekam layout &amp; kondisi toko)</span></label>
         <input type="file" accept="video/*" id="vid">
-        <label>📸 Foto Toko <span style="color:#9aa5b1;font-weight:400;">(boleh banyak)</span></label>
+        <label>📸 Foto Toko <span style="color:#9aa5b1;font-weight:400;">(foto stok aktif, boleh banyak)</span></label>
         <input type="file" accept="image/*" multiple id="fot">
-        <div class="hint">Minimal 1 foto atau video.</div>
+        <div class="hint">Minimal 1 foto atau video. ⚠️ Dummy / unit pajangan JANGAN difoto.</div>
 
         <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
@@ -137,7 +134,7 @@
       var form = {
         peran: PERAN, tanggalKunjungan: val('tanggalKunjungan'),
         nama: val('namaPromotor'), namaPromotor: val('namaPromotor'),
-        namaToko: val('namaToko'), stokPromotor: val('stokPromotor'),
+        namaToko: val('namaToko'),
         lat: LOKASI.lat, lng: LOKASI.lng
       };
       var video = document.getElementById('vid').files[0] || null;
