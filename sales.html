@@ -29,7 +29,7 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>📝 Laporan Kunjungan Toko</h1>
+      <h1>🧑‍💼 Laporan Sales SKN</h1>
       <p class="sub">SKN / Unistar — isi saat kamu berada di toko</p>
       <form id="f" onsubmit="return false;">
         <label>Tanggal Kunjungan <span class="req">*</span></label>
@@ -73,6 +73,16 @@
         <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
         <div id="gpsInfo" class="hint">Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.</div>
+
+        <div style="margin-top:18px; background:#eef4ff; border:1.5px solid #c9dbff; border-radius:11px; padding:12px 15px;">
+          <div style="font-size:13px; font-weight:700; color:#1d4ed8; margin-bottom:6px;">📷 Cara ambil video &amp; foto (kirim ke Tim Support)</div>
+          <div style="font-size:13.5px; line-height:1.65; color:#384250;">
+            🎥 <b>Video:</b> rekam sekeliling isi toko (layout &amp; kondisi).<br>
+            📸 <b>Foto stok aktif</b> — wajib banyak &amp; jelas: Handphone, aksesoris, &amp; IoT.<br>
+            ℹ️ Dummy box tidak perlu difoto.<br>
+            Kirim video &amp; foto ini ke <b>Tim Support</b> lewat WhatsApp.
+          </div>
+        </div>
 
         <button type="button" class="btn" id="btn" onclick="kirim()">Kirim Laporan</button>
         <div id="msg"></div>
