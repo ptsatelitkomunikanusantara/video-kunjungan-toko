@@ -50,11 +50,11 @@
         <label>Nama Toko <span class="req">*</span></label>
         <input type="text" id="namaToko" placeholder="cth: Toko Berkah Cell" required>
 
-        <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(rekam layout &amp; kondisi toko)</span></label>
+        <label>🎥 Video Toko <span style="color:#9aa5b1;font-weight:400;">(rekam sekeliling isi toko)</span></label>
         <input type="file" accept="video/*" id="vid">
         <label>📸 Foto Stok Toko <span style="color:#d64545;font-weight:600;">(wajib banyak &amp; jelas)</span></label>
         <input type="file" accept="image/*" multiple id="fot">
-        <div class="hint">Foto stok toko sebanyak &amp; sejelas mungkin. ⚠️ Dummy / unit pajangan JANGAN difoto.</div>
+        <div class="hint">Foto stok aktif: Handphone, aksesoris, &amp; IoT — sebanyak &amp; sejelas mungkin. Dummy box tidak perlu difoto.</div>
 
         <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
@@ -159,7 +159,7 @@
         }
         show('ok', '⏳ Menyimpan...');
         var res = await callApi('simpanKunjunganPromotor', { form: form, files: { videoId: videoId, photoIds: photoIds } });
-        show('ok', '✅ Laporan terkirim! Terima kasih. (No. ' + res.id + ')');
+        show('ok', '✅ Laporan terkirim & masuk sistem. Tidak perlu dikirim ke mana-mana lagi. (No. ' + res.id + ')');
         document.getElementById('f').reset();
         bar.style.display = 'none'; fill.style.width = '0%';
         LOKASI = { lat: '', lng: '' };
