@@ -67,19 +67,29 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <!-- ===== LOGIN ===== -->
+  <div class="wrap" id="loginView">
+    <div class="card">
+      <h1 style="font-size:20px;color:#0b3d91;margin:0 0 2px;">🔒 Login Dashboard</h1>
+      <p class="sub">SKN / Unistar — masuk dengan ID &amp; password provinsi kamu.</p>
+      <label style="display:block;font-size:13px;font-weight:600;margin:14px 0 5px;">ID</label>
+      <input id="loginId" style="width:100%;padding:11px 12px;border:1px solid #cbd2d9;border-radius:9px;font-size:15px;" placeholder="cth: sumut" autocomplete="off">
+      <label style="display:block;font-size:13px;font-weight:600;margin:14px 0 5px;">Password</label>
+      <input id="loginPass" type="password" style="width:100%;padding:11px 12px;border:1px solid #cbd2d9;border-radius:9px;font-size:15px;" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="dl" style="width:100%;margin-top:18px;padding:13px;font-size:16px;" onclick="doLogin()">Masuk</button>
+      <div id="loginMsg" style="margin-top:14px;font-size:14px;color:#a61b1b;"></div>
+    </div>
+  </div>
+
+  <div class="wrap" id="appView" style="display:none;">
+    <div class="topbar" style="margin-bottom:10px;">
+      <div style="font-size:13px;color:#51606e;">👤 <b id="sesiLabel"></b></div>
+      <button class="reload" onclick="logout()">Keluar</button>
+    </div>
     <div class="nav">
-      <button id="navPend" class="on" onclick="tab('pend')">📥 Menunggu Media</button>
-      <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
+      <button id="navHs" class="on" onclick="tab('hs')">📋 Hasil</button>
       <button id="navSum" onclick="tab('sum')">📊 Ringkasan</button>
       <button id="navMap" onclick="tab('map')">🗺️ Peta</button>
-    </div>
-
-    <!-- ===== MENUNGGU MEDIA (TS tempel video/foto) ===== -->
-    <div id="viewPend">
-      <div class="topbar"><h1>📥 Kunjungan Menunggu Media</h1><button class="reload" onclick="muatPending()">↻</button></div>
-      <p class="sub">Pilih kunjungan dari sales, lalu tempel video/foto yang dikirim sales.</p>
-      <div id="plist"><div class="loading">Memuat...</div></div>
     </div>
 
     <!-- ===== HASIL ===== -->
@@ -123,17 +133,44 @@
       return j.result;
     }
 
-    var PENDING = [];
+    // ===== SESI / LOGIN =====
+    var SESI = null;
+    function doLogin() {
+      var id = document.getElementById('loginId').value.trim();
+      var pass = document.getElementById('loginPass').value;
+      var m = document.getElementById('loginMsg');
+      m.textContent = '⏳ Masuk...';
+      callApi('login', { id: id, pass: pass }).then(function (res) {
+        if (!res || !res.ok) { m.textContent = '❌ ' + ((res && res.error) ? res.error : 'ID atau password salah.'); return; }
+        SESI = { id: id, pass: pass, admin: res.admin, provinsi: res.provinsi };
+        try { sessionStorage.setItem('sesiSKN', JSON.stringify(SESI)); } catch (e) {}
+        masukApp();
+      }).catch(function (e) { m.textContent = '❌ ' + e.message; });
+    }
+    function masukApp() {
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('appView').style.display = 'block';
+      document.getElementById('sesiLabel').textContent = SESI.admin ? 'Admin — semua provinsi' : ('Provinsi: ' + SESI.provinsi);
+      DATA = [];
+      tab('hs'); muat();
+    }
+    function logout() {
+      SESI = null;
+      try { sessionStorage.removeItem('sesiSKN'); } catch (e) {}
+      DATA = [];
+      document.getElementById('appView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'block';
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginMsg').textContent = '';
+    }
+
     function tab(t) {
-      document.getElementById('viewPend').style.display = (t === 'pend') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
       document.getElementById('viewSum').style.display = (t === 'sum') ? 'block' : 'none';
       document.getElementById('viewMap').style.display = (t === 'map') ? 'block' : 'none';
-      document.getElementById('navPend').className = (t === 'pend') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
       document.getElementById('navSum').className = (t === 'sum') ? 'on' : '';
       document.getElementById('navMap').className = (t === 'map') ? 'on' : '';
-      if (t === 'pend') muatPending();
       if (t === 'hs' && !DATA.length) muat();
       if (t === 'sum') muatSum();
       if (t === 'map') muatMap();
@@ -143,17 +180,32 @@
     function sliceB64(file, start, end) {
       return new Promise(function (resolve, reject) {
         var r = new FileReader();
-        r.onload = function (e) { resolve(e.target.result.split(',')[1]); };
-        r.onerror = reject;
-        r.readAsDataURL(file.slice(start, end));
+        r.onload = function (e) {
+          var res = e.target.result;
+          if (!res || res.indexOf(',') < 0) { reject(new Error('file tidak terbaca')); return; }
+          resolve(res.split(',')[1]);
+        };
+        r.onerror = function () { reject(new Error('gagal baca file (' + ((r.error && r.error.name) ? r.error.name : 'NotReadable') + ')')); };
+        r.onabort = function () { reject(new Error('pembacaan file dibatalkan')); };
+        try { r.readAsDataURL(file.slice(start, end)); }
+        catch (ex) { reject(new Error('gagal baca file: ' + (ex && ex.message ? ex.message : ex))); }
       });
+    }
+    // baca 1 potongan dgn percobaan ulang (pembacaan file di HP kadang gagal sesaat)
+    async function bacaChunk(file, start, end) {
+      var last;
+      for (var i = 0; i < 4; i++) {
+        try { return await sliceB64(file, start, end); }
+        catch (e) { last = e; await new Promise(function (r) { setTimeout(r, 400); }); }
+      }
+      throw new Error('File "' + file.name + '" tidak bisa dibaca (' + (last && last.message ? last.message : 'coba file lain / kecilkan resolusi') + ')');
     }
     async function uploadOneFile(file, onProgress) {
       var sid = await callApi('mulaiUpload', { fileName: file.name, mimeType: file.type });
       var start = 0, fileId = null;
       while (start < file.size) {
         var end = Math.min(start + CHUNK, file.size);
-        var b64 = await sliceB64(file, start, end);
+        var b64 = await bacaChunk(file, start, end);
         var isLast = end >= file.size;
         var res = await callApi('uploadChunk', { sid: sid, b64: b64, start: start, total: file.size, isLast: isLast });
         start = end;
@@ -225,9 +277,15 @@
     }
 
     // ---------- DASHBOARD ----------
+    async function ambilData_() {
+      if (!SESI) throw new Error('Belum login.');
+      var res = await callApi('getDataForLogin', { id: SESI.id, pass: SESI.pass });
+      if (!res || !res.ok) throw new Error((res && res.error) || 'Sesi tidak valid, login ulang.');
+      return res.data || [];
+    }
     async function muat() {
       document.getElementById('list').innerHTML = '<div class="loading">Memuat data...</div>';
-      try { DATA = await callApi('getData'); buildTren(); render(); }
+      try { DATA = await ambilData_(); buildTren(); render(); }
       catch (e) { document.getElementById('list').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
     }
 
@@ -267,7 +325,7 @@
     async function muatSum() {
       document.getElementById('sumbox').innerHTML = '<div class="loading">Memuat data...</div>';
       try {
-        if (!DATA.length) { DATA = await callApi('getData'); buildTren(); }
+        if (!DATA.length) { DATA = await ambilData_(); buildTren(); }
         renderSum();
       } catch (e) { document.getElementById('sumbox').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
     }
@@ -348,6 +406,7 @@
 
       document.getElementById('sumbox').innerHTML =
         tiles +
+        '<div class="sec">🗺️ Per Provinsi</div>' + tabelGrup('Provinsi', grup(function (r) { return r.provinsi; }, done), true) +
         '<div class="sec">⚠️ Prioritas Kunjungan (skor terendah)</div>' + prioHtml +
         '<div class="sec">📈 Tren Antar-Kunjungan</div>' + trenHtml +
         '<div class="sec">📍 Per Area</div>' + tabelGrup('Area', grup(function (r) { return r.area; }, done), true) +
@@ -359,7 +418,7 @@
     var MAP = null, MAPLAYER = null;
     async function muatMap() {
       var info = document.getElementById('mapinfo');
-      try { if (!DATA.length) { DATA = await callApi('getData'); buildTren(); } }
+      try { if (!DATA.length) { DATA = await ambilData_(); buildTren(); } }
       catch (e) { info.textContent = 'Gagal memuat data: ' + e.message; return; }
       if (typeof L === 'undefined') { info.innerHTML = '⚠️ Peta gagal dimuat. Cek koneksi internet lalu tekan ↻.'; return; }
 
@@ -502,8 +561,13 @@
 
     function mb(b) { return (b / 1024 / 1024).toFixed(1); }
 
-    // Muat daftar "Menunggu Media" saat halaman dibuka
-    muatPending();
+    // Lanjutkan sesi login bila masih ada (biar tak login ulang saat refresh)
+    (function () {
+      try {
+        var s = sessionStorage.getItem('sesiSKN');
+        if (s) { SESI = JSON.parse(s); masukApp(); }
+      } catch (e) {}
+    })();
   </script>
 </body>
 </html>
