@@ -24,6 +24,9 @@
     .box { border: 1px solid #e6ebf2; border-radius: 10px; padding: 4px 14px 14px; margin-top: 8px; background: #fafbfc; }
     .chk { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; font-size: 14px; font-weight: 600; }
     .chk input { width: 18px; height: 18px; }
+    .mbtn { flex: 1; padding: 12px 8px; border: 1.5px solid #0b3d91; background: #eef3ff; color: #0b3d91; border-radius: 9px; font-weight: 700; font-size: 14px; cursor: pointer; }
+    #bar { height: 8px; background: #e4e7eb; border-radius: 5px; margin-top: 14px; overflow: hidden; display: none; }
+    #barfill { height: 100%; width: 0%; background: #0b3d91; transition: width .2s; }
   </style>
 </head>
 <body>
@@ -52,6 +55,11 @@
         <input type="text" id="area" placeholder="cth: Medan Kota" required>
         <label>Nama Sales <span class="req">*</span></label>
         <input type="text" id="namaSales" placeholder="cth: Budi" required>
+        <label>Provinsi <span class="req">*</span></label>
+        <select id="provinsi" required>
+          <option value="">-- pilih provinsi --</option>
+          <option>Aceh</option><option>Sumatera Utara</option><option>Sumatera Barat</option><option>Riau</option><option>Kepulauan Riau</option><option>Jambi</option><option>Sumatera Selatan</option><option>Bangka Belitung</option><option>Bengkulu</option><option>Lampung</option><option>DKI Jakarta</option><option>Jawa Barat</option><option>Banten</option><option>Jawa Tengah</option><option>DI Yogyakarta</option><option>Jawa Timur</option><option>Bali</option><option>Nusa Tenggara Barat</option><option>Nusa Tenggara Timur</option><option>Kalimantan Barat</option><option>Kalimantan Tengah</option><option>Kalimantan Selatan</option><option>Kalimantan Timur</option><option>Kalimantan Utara</option><option>Sulawesi Utara</option><option>Gorontalo</option><option>Sulawesi Tengah</option><option>Sulawesi Barat</option><option>Sulawesi Selatan</option><option>Sulawesi Tenggara</option><option>Maluku</option><option>Maluku Utara</option><option>Papua</option><option>Papua Barat</option><option>Papua Selatan</option><option>Papua Tengah</option><option>Papua Pegunungan</option><option>Papua Barat Daya</option>
+        </select>
 
         <div class="chk"><input type="checkbox" id="adaPromotor" onchange="togglePromotor()"><label for="adaPromotor" style="margin:0;">👥 Ada promotor di toko ini? (Infinix / brand lain)</label></div>
         <div class="box" id="boxPromotor" style="display:none;">
@@ -74,17 +82,28 @@
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
         <div id="gpsInfo" class="hint">Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.</div>
 
-        <div style="margin-top:18px; background:#eef4ff; border:1.5px solid #c9dbff; border-radius:11px; padding:12px 15px;">
-          <div style="font-size:13px; font-weight:700; color:#1d4ed8; margin-bottom:6px;">📷 Cara ambil video &amp; foto (kirim ke Tim Support)</div>
-          <div style="font-size:13.5px; line-height:1.65; color:#384250;">
-            🎥 <b>Video:</b> rekam <b>sekeliling isi toko</b> (layout &amp; kondisi).<br>
-            📸 <b>Foto stok aktif</b> — <b>WAJIB banyak &amp; jelas</b>: Handphone, aksesoris, &amp; IoT.<br>
-            ℹ️ <b>Dummy box tidak perlu difoto.</b><br>
-            Kirim video &amp; foto ini ke <b>Tim Support</b> lewat WhatsApp.
-          </div>
+        <label>🎥 Video Toko</label>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="mbtn" onclick="document.getElementById('vidCam').click()">📹 Rekam Video</button>
+          <button type="button" class="mbtn" onclick="document.getElementById('vidGal').click()">🖼️ Pilih Video</button>
         </div>
+        <input type="file" accept="video/*" capture="environment" id="vidCam" style="display:none" onchange="setVideo(this)">
+        <input type="file" accept="video/*" id="vidGal" style="display:none" onchange="setVideo(this)">
+        <div id="vidInfo" class="hint">Belum ada video.</div>
+
+        <label>📸 Foto Stok Toko</label>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="mbtn" onclick="document.getElementById('fotCam').click()">📷 Ambil Foto</button>
+          <button type="button" class="mbtn" onclick="document.getElementById('fotGal').click()">🖼️ Dari Galeri</button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" id="fotCam" style="display:none" onchange="addFotos(this)">
+        <input type="file" accept="image/*" multiple id="fotGal" style="display:none" onchange="addFotos(this)">
+        <div id="fotInfo" class="hint">Belum ada foto.</div>
+
+        <div class="hint" style="line-height:1.7;">🎥 <b>Video:</b> rekam <b>sekeliling isi toko</b> (layout &amp; kondisi).<br>📸 <b>Foto stok aktif</b> — <b>WAJIB banyak &amp; jelas</b>: Handphone, aksesoris, &amp; IoT.<br>ℹ️ <b>Dummy box tidak perlu difoto.</b></div>
 
         <button type="button" class="btn" id="btn" onclick="kirim()">Kirim Laporan</button>
+        <div id="bar"><div id="barfill"></div></div>
         <div id="msg"></div>
       </form>
     </div>
@@ -93,6 +112,9 @@
   <script>
     var APP_URL = 'https://script.google.com/macros/s/AKfycbxrxIizlkcaFwH1db6vZ-HBTNhojDHpy7lwDpuIli2aDAV-dWnRakgwBjXOnGTq--mOig/exec';
     var LOKASI = { lat: '', lng: '' };
+    var MAX = 500 * 1024 * 1024;
+    var CHUNK = 5 * 1024 * 1024;
+    var VIDEO = null, FOTOS = [];
 
     async function callApi(action, params) {
       var body = Object.assign({ action: action }, params || {});
@@ -101,6 +123,60 @@
       if (!j.ok) throw new Error(j.error || 'Gagal memproses');
       return j.result;
     }
+
+    function sliceB64(file, start, end) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function (e) {
+          var res = e.target.result;
+          if (!res || res.indexOf(',') < 0) { reject(new Error('file tidak terbaca')); return; }
+          resolve(res.split(',')[1]);
+        };
+        r.onerror = function () { reject(new Error('gagal baca file (' + ((r.error && r.error.name) ? r.error.name : 'NotReadable') + ')')); };
+        r.onabort = function () { reject(new Error('pembacaan file dibatalkan')); };
+        try { r.readAsDataURL(file.slice(start, end)); }
+        catch (ex) { reject(new Error('gagal baca file: ' + (ex && ex.message ? ex.message : ex))); }
+      });
+    }
+    async function bacaChunk(file, start, end) {
+      var last;
+      for (var i = 0; i < 4; i++) {
+        try { return await sliceB64(file, start, end); }
+        catch (e) { last = e; await new Promise(function (r) { setTimeout(r, 400); }); }
+      }
+      throw new Error('File "' + file.name + '" tidak bisa dibaca (' + (last && last.message ? last.message : 'coba file lain / kecilkan resolusi') + ')');
+    }
+    async function uploadOneFile(file, onProgress) {
+      var sid = await callApi('mulaiUpload', { fileName: file.name, mimeType: file.type });
+      var start = 0, fileId = null;
+      while (start < file.size) {
+        var end = Math.min(start + CHUNK, file.size);
+        var b64 = await bacaChunk(file, start, end);
+        var isLast = end >= file.size;
+        var res = await callApi('uploadChunk', { sid: sid, b64: b64, start: start, total: file.size, isLast: isLast });
+        start = end;
+        if (onProgress) onProgress(start);
+        if (res && res.done) { fileId = res.fileId; break; }
+      }
+      if (!fileId) throw new Error('Upload "' + file.name + '" gagal.');
+      return fileId;
+    }
+    function setVideo(inp) {
+      VIDEO = inp.files[0] || null;
+      document.getElementById('vidInfo').textContent = VIDEO ? ('✅ 1 video: ' + VIDEO.name) : 'Belum ada video.';
+    }
+    function addFotos(inp) {
+      var fs = Array.prototype.slice.call(inp.files || []);
+      for (var i = 0; i < fs.length; i++) FOTOS.push(fs[i]);
+      inp.value = '';
+      document.getElementById('fotInfo').textContent = FOTOS.length ? ('✅ ' + FOTOS.length + ' foto dipilih') : 'Belum ada foto.';
+    }
+    function resetMedia() {
+      VIDEO = null; FOTOS = [];
+      document.getElementById('vidInfo').textContent = 'Belum ada video.';
+      document.getElementById('fotInfo').textContent = 'Belum ada foto.';
+    }
+    function mb(b) { return (b / 1024 / 1024).toFixed(1); }
 
     function togglePromotor() {
       document.getElementById('boxPromotor').style.display = document.getElementById('adaPromotor').checked ? 'block' : 'none';
@@ -125,7 +201,7 @@
       var btn = document.getElementById('btn');
       var form = {
         tanggalKunjungan: val('tanggalKunjungan'), namaToko: val('namaToko'), jenisToko: val('jenisToko'),
-        area: val('area'), namaSales: val('namaSales'),
+        area: val('area'), namaSales: val('namaSales'), provinsi: val('provinsi'),
         promotorJumlah: '', promotorBrand: '', promotorTarget: '',
         pengambilanInfinix: val('ambilInfinix'), pengambilanItel: val('ambilItel'),
         lat: LOKASI.lat, lng: LOKASI.lng
@@ -135,15 +211,31 @@
         form.promotorBrand = val('promotorBrand');
         form.promotorTarget = val('promotorTarget');
       }
-      if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
+      var video = VIDEO, fotos = FOTOS.slice();
+      if (!form.tanggalKunjungan || !form.namaToko || !form.jenisToko || !form.area || !form.namaSales || !form.provinsi) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
+      if (!video && !fotos.length) return show('err', 'Mohon ambil/pilih minimal 1 foto atau video.');
+      if (video && video.size > MAX) return show('err', 'Video ' + mb(video.size) + ' MB melebihi batas 500 MB.');
       if (!form.lat || !form.lng) { if (!confirm('Titik lokasi toko belum diambil. Tetap kirim tanpa lokasi?')) return; }
 
-      btn.disabled = true;
-      show('ok', '⏳ Menyimpan laporan...');
+      var files = (video ? [video] : []).concat(fotos);
+      var total = files.reduce(function (s, f) { return s + f.size; }, 0), done = 0;
+      var bar = document.getElementById('bar'), fill = document.getElementById('barfill');
+      btn.disabled = true; bar.style.display = 'block';
+      show('ok', '⏳ Mengunggah ' + files.length + ' file... jangan tutup halaman.');
       try {
-        var done = await callApi('simpanKunjunganSales', { form: form });
-        show('ok', '✅ Laporan kunjungan tersimpan. Terima kasih! (No. ' + done.id + ')');
+        var videoId = null, photoIds = [];
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          var fid = await uploadOneFile(f, function (sent) { fill.style.width = Math.round((done + sent) / total * 100) + '%'; });
+          if (f === video) videoId = fid; else photoIds.push(fid);
+          done += f.size; fill.style.width = Math.round(done / total * 100) + '%';
+        }
+        show('ok', '⏳ Menyimpan...');
+        var res = await callApi('simpanKunjunganSales', { form: form, files: { videoId: videoId, photoIds: photoIds } });
+        show('ok', '✅ Laporan kunjungan terkirim! Terima kasih. (No. ' + res.id + ')');
         document.getElementById('f').reset();
+        resetMedia();
+        bar.style.display = 'none'; fill.style.width = '0%';
         document.getElementById('boxPromotor').style.display = 'none';
         LOKASI = { lat: '', lng: '' };
         document.getElementById('btnGps').textContent = '📍 Ambil Lokasi Toko';
