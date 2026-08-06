@@ -88,9 +88,17 @@
     </div>
     <div class="nav">
       <button id="navCek" class="on" onclick="tab('cek')">🔎 Cek Level</button>
+      <button id="navPend" onclick="tab('pend')">📥 Bantu Upload</button>
       <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
       <button id="navSum" onclick="tab('sum')">📊 Ringkasan</button>
       <button id="navMap" onclick="tab('map')">🗺️ Peta</button>
+    </div>
+
+    <!-- ===== BANTU UPLOAD (media gagal terupload dari lapangan) ===== -->
+    <div id="viewPend" style="display:none;">
+      <div class="topbar"><h1>📥 Bantu Upload Media</h1><button class="reload" onclick="muatPending()">↻</button></div>
+      <p class="sub">Laporan yang media-nya gagal terkirim dari lapangan. Tempel video/foto (dari WhatsApp) lalu Upload.</p>
+      <div id="plist"><div class="loading">Memuat...</div></div>
     </div>
 
     <!-- ===== CEK LEVEL (TS benarkan level sebelum dinilai) ===== -->
@@ -174,14 +182,17 @@
 
     function tab(t) {
       document.getElementById('viewCek').style.display = (t === 'cek') ? 'block' : 'none';
+      document.getElementById('viewPend').style.display = (t === 'pend') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
       document.getElementById('viewSum').style.display = (t === 'sum') ? 'block' : 'none';
       document.getElementById('viewMap').style.display = (t === 'map') ? 'block' : 'none';
       document.getElementById('navCek').className = (t === 'cek') ? 'on' : '';
+      document.getElementById('navPend').className = (t === 'pend') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
       document.getElementById('navSum').className = (t === 'sum') ? 'on' : '';
       document.getElementById('navMap').className = (t === 'map') ? 'on' : '';
       if (t === 'cek') muatCek();
+      if (t === 'pend') muatPending();
       if (t === 'hs' && !DATA.length) muat();
       if (t === 'sum') muatSum();
       if (t === 'map') muatMap();
@@ -227,31 +238,35 @@
       return fileId;
     }
 
-    // ---------- MENUNGGU MEDIA (TS) ----------
+    // ---------- BANTU UPLOAD (media gagal terupload dari lapangan) ----------
     async function muatPending() {
       document.getElementById('plist').innerHTML = '<div class="loading">Memuat...</div>';
-      try { PENDING = await callApi('getPending'); renderPending(); }
-      catch (e) { document.getElementById('plist').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+      try {
+        var res = await callApi('getPending', { id: SESI.id, pass: SESI.pass });
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Sesi tidak valid.');
+        PENDING = res.data || [];
+        renderPending();
+        document.getElementById('navPend').textContent = '📥 Bantu Upload' + (PENDING.length ? ' (' + PENDING.length + ')' : '');
+      } catch (e) { document.getElementById('plist').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
     }
     function renderPending() {
-      if (!PENDING.length) { document.getElementById('plist').innerHTML = '<div class="empty">Tidak ada kunjungan menunggu media. 🎉</div>'; return; }
+      if (!PENDING.length) { document.getElementById('plist').innerHTML = '<div class="empty">Tidak ada laporan yang perlu dibantu upload. 🎉</div>'; return; }
       document.getElementById('plist').innerHTML = PENDING.map(pendingItemHtml).join('');
     }
     function pendingItemHtml(r) {
       var id = esc(r.id);
-      var promoBlok = r.promotor ? fld('👥 Promotor di Toko', r.promotor) : '';
-      var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '<span class="hint">📍 lokasi tidak diambil sales</span>';
+      var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '<span class="hint">📍 lokasi belum ada</span>';
       return '<div class="item open" id="pi_' + id + '">' +
         '<div class="head" onclick="this.parentNode.classList.toggle(\'open\')">' +
-          '<div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + '</div>' +
-          '<div class="meta">' + esc(r.area) + ' • ' + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
+          '<div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + sumberTag(r) + '</div>' +
+          '<div class="meta">' + (r.area ? esc(r.area) + ' • ' : '') + esc(r.sales) + ' • ' + esc(r.provinsi) + ' • ' + esc(r.tanggal) + '</div></div>' +
           '<span class="badge b-proc">Menunggu Media</span><span class="chev">▶</span></div>' +
-        '<div class="detail">' + capaFld(r) + promoBlok +
+        '<div class="detail">' +
           '<div class="aksi" style="margin:8px 0 4px;">' + mapsBtn + '</div>' +
           '<label>🎥 Video (opsional)</label><input type="file" accept="video/*" id="vid_' + id + '">' +
           '<label>📸 Foto (opsional, bisa banyak)</label><input type="file" accept="image/*" multiple id="fot_' + id + '">' +
-          '<div class="hint">Tempel video/foto yang dikirim sales. Minimal 1 file.</div>' +
-          '<button class="btn" onclick="prosesMedia(event,\'' + id + '\')">Upload & Proses</button>' +
+          '<div class="hint">Tempel video/foto yang dikirim sales/promotor (via WA). Minimal 1 file.</div>' +
+          '<button class="btn" onclick="prosesMedia(event,\'' + id + '\')">Upload &amp; Proses</button>' +
           '<div id="bar_' + id + '" style="height:8px;background:#e4e7eb;border-radius:5px;margin-top:12px;overflow:hidden;display:none;"><div id="fill_' + id + '" style="height:100%;width:0%;background:#0b3d91;transition:width .2s;"></div></div>' +
           '<div id="msg_' + id + '" class="hint" style="margin-top:8px;"></div>' +
         '</div></div>';
@@ -279,7 +294,7 @@
         }
         msg.textContent = '⏳ Menyimpan...';
         await callApi('lampirkanMedia', { id: id, files: { videoId: videoId, photoIds: photoIds } });
-        msg.textContent = '✅ Media terpasang! Analisa berjalan otomatis (cek tab Hasil beberapa menit lagi).';
+        msg.textContent = '✅ Media terpasang! (Laporan sales → cek tab "🔎 Cek Level"; promotor langsung dinilai AI.)';
         setTimeout(muatPending, 1500);
       } catch (err) {
         msg.textContent = '❌ ' + (err && err.message ? err.message : err);
