@@ -81,6 +81,11 @@
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
         <div id="gpsInfo" class="hint">Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.</div>
         <div class="hint" style="color:#b7791f;">💡 Susah/tak bisa lokasi? Buka link ini di <b>Chrome</b> (bukan dari dalam WhatsApp) &amp; nyalakan GPS/Lokasi HP.</div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <input type="text" id="mapsPaste" placeholder="Atau tempel link/koordinat Google Maps" onchange="cekMapsPaste()" style="flex:1; min-width:0;">
+          <button type="button" onclick="window.open('https://www.google.com/maps','_blank')" style="white-space:nowrap; padding:11px 14px; border:1px solid #6d28d9; background:#f3e8ff; color:#6d28d9; border-radius:9px; font-weight:600; cursor:pointer;">🗺️ Buka Maps</button>
+        </div>
+        <div class="hint">Cara: buka Google Maps → tekan-lama titik toko → salin koordinat/link → tempel di sini.</div>
 
         <button type="button" class="btn" id="btn" onclick="kirim()">Kirim Laporan</button>
         <div id="bar"><div id="barfill"></div></div>
@@ -190,6 +195,22 @@
       return fileId;
     }
 
+    function parseMaps(s) {
+      s = (s || '').trim(); if (!s) return null;
+      var m = s.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+           || s.match(/[?&](?:q|ll|query|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+           || s.match(/(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})/);
+      if (!m) return null;
+      var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+      return { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+    }
+    function cekMapsPaste() {
+      var v = val('mapsPaste'); if (!v) return;
+      var pm = parseMaps(v);
+      if (pm) { LOKASI.lat = pm.lat; LOKASI.lng = pm.lng; document.getElementById('gpsInfo').innerHTML = '✅ Lokasi dari link/koordinat: ' + pm.lat + ', ' + pm.lng; }
+      else { document.getElementById('gpsInfo').innerHTML = '⚠️ Belum terbaca. Tempel <b>koordinat</b> "lat, lng" atau link Maps yang berisi koordinat (link pendek goo.gl tidak bisa).'; }
+    }
     function pesanGps(err) {
       var c = err && err.code;
       if (c === 1) return '⚠️ Akses lokasi DITOLAK. <b>Izinkan lokasi</b> untuk situs ini. Kalau link dibuka dari dalam <b>WhatsApp/IG</b>, buka dulu di <b>Chrome</b>.';
@@ -225,6 +246,10 @@
         lat: LOKASI.lat, lng: LOKASI.lng
       };
       var video = VIDEO, fotos = FOTOS.slice();
+      if (!form.lat || !form.lng) {   // GPS gagal -> pakai link/koordinat Maps yg ditempel
+        var pm = parseMaps(val('mapsPaste'));
+        if (pm) { LOKASI.lat = pm.lat; LOKASI.lng = pm.lng; form.lat = pm.lat; form.lng = pm.lng; }
+      }
       if (!form.tanggalKunjungan || !form.namaPromotor || !form.namaToko || !form.provinsi) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
       if (!video && !fotos.length) return show('err', 'Mohon ambil/pilih minimal 1 foto atau video.');
       if (video && video.size > MAX) return show('err', 'Video ' + mb(video.size) + ' MB melebihi batas 500 MB.');
