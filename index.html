@@ -87,9 +87,17 @@
       <button class="reload" onclick="logout()">Keluar</button>
     </div>
     <div class="nav">
-      <button id="navHs" class="on" onclick="tab('hs')">📋 Hasil</button>
+      <button id="navCek" class="on" onclick="tab('cek')">🔎 Cek Level</button>
+      <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
       <button id="navSum" onclick="tab('sum')">📊 Ringkasan</button>
       <button id="navMap" onclick="tab('map')">🗺️ Peta</button>
+    </div>
+
+    <!-- ===== CEK LEVEL (TS benarkan level sebelum dinilai) ===== -->
+    <div id="viewCek">
+      <div class="topbar"><h1>🔎 Cek Level Sebelum Dinilai</h1><button class="reload" onclick="muatCek()">↻</button></div>
+      <p class="sub">Laporan Sales menunggu kamu cek/benarkan Level toko, lalu tekan "Proses &amp; Nilai".</p>
+      <div id="ceklist"><div class="loading">Memuat...</div></div>
     </div>
 
     <!-- ===== HASIL ===== -->
@@ -152,7 +160,7 @@
       document.getElementById('appView').style.display = 'block';
       document.getElementById('sesiLabel').textContent = SESI.admin ? 'Admin — semua provinsi' : ('Provinsi: ' + SESI.provinsi);
       DATA = [];
-      tab('hs'); muat();
+      tab('cek');
     }
     function logout() {
       SESI = null;
@@ -165,12 +173,15 @@
     }
 
     function tab(t) {
+      document.getElementById('viewCek').style.display = (t === 'cek') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
       document.getElementById('viewSum').style.display = (t === 'sum') ? 'block' : 'none';
       document.getElementById('viewMap').style.display = (t === 'map') ? 'block' : 'none';
+      document.getElementById('navCek').className = (t === 'cek') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
       document.getElementById('navSum').className = (t === 'sum') ? 'on' : '';
       document.getElementById('navMap').className = (t === 'map') ? 'on' : '';
+      if (t === 'cek') muatCek();
       if (t === 'hs' && !DATA.length) muat();
       if (t === 'sum') muatSum();
       if (t === 'map') muatMap();
@@ -287,6 +298,49 @@
       document.getElementById('list').innerHTML = '<div class="loading">Memuat data...</div>';
       try { DATA = await ambilData_(); buildTren(); render(); }
       catch (e) { document.getElementById('list').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+
+    // ========== CEK LEVEL (TS) ==========
+    function levelOptions(sel) {
+      var lv = ['WMD', 'RKA', 'RMD 1', 'RMD 2', 'RMD 3', 'RMD 4', 'RMD 5', 'SR'];
+      var o = '<option value="">- pilih level -</option>';
+      for (var i = 0; i < lv.length; i++) o += '<option' + (String(sel) === lv[i] ? ' selected' : '') + '>' + lv[i] + '</option>';
+      return o;
+    }
+    function cekItemHtml(r) {
+      var id = esc(r.id);
+      var flist = (r.files && r.files.length) ? r.files.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank" onclick="event.stopPropagation()">▶️ File ' + (i + 1) + '</a>'; }).join('') : '';
+      return '<div class="item open">' +
+        '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + '</div>' +
+        '<div class="meta">' + (r.area ? esc(r.area) + ' • ' : '') + esc(r.sales) + ' • ' + esc(r.provinsi) + ' • ' + esc(r.tanggal) + '</div></div>' +
+        '<span class="badge b-proc">Cek Level</span></div>' +
+        '<div class="detail">' +
+        '<div class="fld"><div class="k">Level toko (diisi sales — betulkan bila salah)</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">' +
+        '<select id="lv_' + id + '" style="padding:9px 10px;border:1px solid #cbd2d9;border-radius:8px;font-size:14px;" onclick="event.stopPropagation()">' + levelOptions(r.level) + '</select>' +
+        '<button class="dl" onclick="prosesCek(event,\'' + id + '\')">✅ Proses &amp; Nilai</button>' +
+        '<span id="cs_' + id + '" style="font-size:12px;color:#6b7280;"></span></div></div>' +
+        (flist ? '<div class="aksi">' + flist + '</div>' : '') +
+        '</div></div>';
+    }
+    async function muatCek() {
+      document.getElementById('ceklist').innerHTML = '<div class="loading">Memuat...</div>';
+      try {
+        var res = await callApi('getCekLevel', { id: SESI.id, pass: SESI.pass });
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Sesi tidak valid.');
+        var rows = res.data || [];
+        document.getElementById('ceklist').innerHTML = rows.length ? rows.map(cekItemHtml).join('') : '<div class="empty">Tidak ada laporan menunggu cek level. 🎉</div>';
+        document.getElementById('navCek').textContent = '🔎 Cek Level' + (rows.length ? ' (' + rows.length + ')' : '');
+      } catch (e) { document.getElementById('ceklist').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+    async function prosesCek(ev, id) {
+      ev.stopPropagation();
+      var lvl = document.getElementById('lv_' + id).value;
+      var s = document.getElementById('cs_' + id);
+      if (!lvl) { s.textContent = '⚠️ pilih level dulu'; return; }
+      s.textContent = '⏳ memproses...';
+      try { await callApi('prosesCekLevel', { id: id, level: lvl }); s.textContent = '✅ diproses — akan dinilai AI'; setTimeout(muatCek, 800); }
+      catch (e) { s.textContent = '❌ ' + e.message; }
     }
 
     // ========== TREN ANTAR-KUNJUNGAN ==========
