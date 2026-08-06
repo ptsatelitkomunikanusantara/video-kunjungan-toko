@@ -520,7 +520,7 @@
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
       }
       var stokBlok = r.stokPromotor ? fld('📦 Stok diisi promotor', r.stokPromotor) : '';
-      detail = capaFld(r) + trenFld(r) + stokBlok + promoBlok + detail;
+      detail = pengInput(r) + capaFld(r) + trenFld(r) + stokBlok + promoBlok + detail;
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
       var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '';
@@ -541,6 +541,32 @@
       return r.sumber === 'Promotor'
         ? '<span title="Data dari promotor" style="font-size:10px;font-weight:700;color:#7c3aed;background:#f3e8ff;padding:2px 7px;border-radius:6px;margin-left:4px;vertical-align:middle;">👤 Promotor</span>'
         : '';
+    }
+    function pengInput(r) {
+      if (r.sumber === 'Promotor') return '';   // pengambilan hanya utk kunjungan sales
+      var id = esc(r.id);
+      var vi = (r.pengambilanInfinix != null && r.pengambilanInfinix !== '') ? esc(r.pengambilanInfinix) : '';
+      var vt = (r.pengambilanItel != null && r.pengambilanItel !== '') ? esc(r.pengambilanItel) : '';
+      var sty = 'width:80px;padding:8px;border:1px solid #cbd2d9;border-radius:7px;font-size:14px;';
+      return '<div class="fld"><div class="k">📦 Pengambilan Bulan Ini — Infinix / itel (diisi TS)</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:5px;">' +
+        '<input type="number" min="0" id="pi_' + id + '" value="' + vi + '" placeholder="Infinix" style="' + sty + '" onclick="event.stopPropagation();">' +
+        '<input type="number" min="0" id="pt_' + id + '" value="' + vt + '" placeholder="itel" style="' + sty + '" onclick="event.stopPropagation();">' +
+        '<button class="dl" style="padding:8px 14px;" onclick="simpanPengambilan(event,\'' + id + '\')">💾 Simpan</button>' +
+        '<span id="ps_' + id + '" style="font-size:12px;color:#6b7280;"></span>' +
+        '</div></div>';
+    }
+    async function simpanPengambilan(ev, id) {
+      ev.stopPropagation();
+      var inf = document.getElementById('pi_' + id).value.trim();
+      var itl = document.getElementById('pt_' + id).value.trim();
+      var s = document.getElementById('ps_' + id);
+      s.textContent = '⏳ menyimpan...';
+      try {
+        await callApi('updatePengambilan', { id: id, infinix: inf, itel: itl });
+        s.textContent = '✅ tersimpan — CAPA diperbarui';
+        setTimeout(muat, 900);
+      } catch (e) { s.textContent = '❌ ' + e.message; }
     }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
