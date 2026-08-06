@@ -80,6 +80,7 @@
         <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
         <div id="gpsInfo" class="hint">Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.</div>
+        <div class="hint" style="color:#b7791f;">💡 Susah/tak bisa lokasi? Buka link ini di <b>Chrome</b> (bukan dari dalam WhatsApp) &amp; nyalakan GPS/Lokasi HP.</div>
 
         <button type="button" class="btn" id="btn" onclick="kirim()">Kirim Laporan</button>
         <div id="bar"><div id="barfill"></div></div>
@@ -102,15 +103,30 @@
       document.getElementById('btnSales').className = 'prole' + (p === 'Sales' ? ' on' : '');
       document.getElementById('f').style.display = 'block';
     }
-    function setVideo(inp) {
-      VIDEO = inp.files[0] || null;
-      document.getElementById('vidInfo').textContent = VIDEO ? ('✅ 1 video: ' + VIDEO.name) : 'Belum ada video.';
+    async function setVideo(inp) {
+      var f = inp.files[0] || null;
+      var info = document.getElementById('vidInfo');
+      if (!f) { VIDEO = null; info.textContent = 'Belum ada video.'; return; }
+      if (f.size > MAX) { VIDEO = null; info.textContent = '⚠️ Video ' + mb(f.size) + ' MB terlalu besar (maks 500 MB). Rekam lebih pendek.'; return; }
+      info.textContent = '⏳ Menyiapkan video...';
+      try {
+        var buf = await f.arrayBuffer();               // simpan isi file ke memori saat masih segar -> cegah NotReadableError
+        VIDEO = new File([buf], f.name || 'video.mp4', { type: f.type || 'video/mp4' });
+        info.textContent = '✅ 1 video: ' + VIDEO.name + ' (' + mb(VIDEO.size) + ' MB)';
+      } catch (e) {
+        VIDEO = null;
+        info.textContent = '⚠️ Video tidak terbaca — rekam/pilih ulang (kalau rekam, buat lebih pendek).';
+      }
     }
-    function addFotos(inp) {
+    async function addFotos(inp) {
       var fs = Array.prototype.slice.call(inp.files || []);
-      for (var i = 0; i < fs.length; i++) FOTOS.push(fs[i]);
+      var gagal = 0;
+      for (var i = 0; i < fs.length; i++) {
+        try { var buf = await fs[i].arrayBuffer(); FOTOS.push(new File([buf], fs[i].name || ('foto' + (FOTOS.length + 1) + '.jpg'), { type: fs[i].type || 'image/jpeg' })); }
+        catch (e) { gagal++; }
+      }
       inp.value = '';
-      document.getElementById('fotInfo').textContent = FOTOS.length ? ('✅ ' + FOTOS.length + ' foto dipilih') : 'Belum ada foto.';
+      document.getElementById('fotInfo').textContent = (FOTOS.length ? ('✅ ' + FOTOS.length + ' foto dipilih') : 'Belum ada foto.') + (gagal ? (' · ' + gagal + ' gagal dibaca, ulangi') : '');
     }
     function resetMedia() {
       VIDEO = null; FOTOS = [];
@@ -174,19 +190,29 @@
       return fileId;
     }
 
+    function pesanGps(err) {
+      var c = err && err.code;
+      if (c === 1) return '⚠️ Akses lokasi DITOLAK. <b>Izinkan lokasi</b> untuk situs ini. Kalau link dibuka dari dalam <b>WhatsApp/IG</b>, buka dulu di <b>Chrome</b>.';
+      if (c === 2) return '⚠️ Lokasi tak tersedia. <b>Nyalakan GPS/Lokasi HP</b> lalu coba lagi.';
+      if (c === 3) return '⚠️ Lokasi timeout. Pastikan GPS nyala &amp; di area terbuka, lalu coba lagi.';
+      return '⚠️ Gagal ambil lokasi. Nyalakan GPS &amp; izinkan akses. Coba buka di Chrome.';
+    }
     function ambilLokasi() {
       var info = document.getElementById('gpsInfo'), b = document.getElementById('btnGps');
-      if (!navigator.geolocation) { info.textContent = '⚠️ HP/browser ini tidak mendukung GPS.'; return; }
+      if (!navigator.geolocation) { info.innerHTML = '⚠️ Browser ini tak mendukung GPS. Buka link di <b>Chrome</b>.'; return; }
       b.disabled = true; info.textContent = '⏳ Mengambil lokasi...';
-      navigator.geolocation.getCurrentPosition(function (pos) {
+      function ok(pos) {
         LOKASI.lat = pos.coords.latitude.toFixed(6);
         LOKASI.lng = pos.coords.longitude.toFixed(6);
         info.innerHTML = '✅ Lokasi tersimpan: ' + LOKASI.lat + ', ' + LOKASI.lng;
         b.disabled = false; b.textContent = '📍 Ambil Ulang Lokasi';
-      }, function (err) {
-        info.textContent = '⚠️ Gagal ambil lokasi: ' + ((err && err.message) ? err.message : 'akses ditolak') + '. Aktifkan izin lokasi HP.';
-        b.disabled = false;
-      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      }
+      navigator.geolocation.getCurrentPosition(ok, function (e1) {
+        info.textContent = '⏳ Mencoba cara lain...';
+        navigator.geolocation.getCurrentPosition(ok, function (e2) {
+          info.innerHTML = pesanGps(e2); b.disabled = false;
+        }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 });
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     }
 
     async function kirim() {
