@@ -94,7 +94,7 @@
     var CHUNK = 5 * 1024 * 1024;
     var LOKASI = { lat: '', lng: '' };
     var PERAN = '';
-    var VIDEO = null, FOTOS = [];
+    var VIDEO = null, FOTOS = [], SAVED_ID = null;
 
     function pilihPeran(p) {
       PERAN = p;
@@ -125,6 +125,15 @@
       if (!j.ok) throw new Error(j.error || 'Gagal memproses');
       return j.result;
     }
+    // panggil dgn percobaan ulang (jaringan lapangan kadang putus sesaat)
+    async function callApiRetry(action, params, tries) {
+      tries = tries || 3; var last;
+      for (var i = 0; i < tries; i++) {
+        try { return await callApi(action, params); }
+        catch (e) { last = e; await new Promise(function (r) { setTimeout(r, 600 * (i + 1)); }); }
+      }
+      throw last;
+    }
 
     function sliceB64(file, start, end) {
       return new Promise(function (resolve, reject) {
@@ -150,13 +159,13 @@
       throw new Error('Foto "' + file.name + '" tidak bisa dibaca (' + (last && last.message ? last.message : 'coba foto lain / kecilkan resolusi') + ')');
     }
     async function uploadOneFile(file, onProgress) {
-      var sid = await callApi('mulaiUpload', { fileName: file.name, mimeType: file.type });
+      var sid = await callApiRetry('mulaiUpload', { fileName: file.name, mimeType: file.type }, 3);
       var start = 0, fileId = null;
       while (start < file.size) {
         var end = Math.min(start + CHUNK, file.size);
         var b64 = await bacaChunk(file, start, end);
         var isLast = end >= file.size;
-        var res = await callApi('uploadChunk', { sid: sid, b64: b64, start: start, total: file.size, isLast: isLast });
+        var res = await callApiRetry('uploadChunk', { sid: sid, b64: b64, start: start, total: file.size, isLast: isLast }, 4);
         start = end;
         if (onProgress) onProgress(start);
         if (res && res.done) { fileId = res.fileId; break; }
@@ -189,19 +198,23 @@
         namaToko: val('namaToko'), provinsi: val('provinsi'),
         lat: LOKASI.lat, lng: LOKASI.lng
       };
-      var video = VIDEO;
-      var fotos = FOTOS.slice();
+      var video = VIDEO, fotos = FOTOS.slice();
       if (!form.tanggalKunjungan || !form.namaPromotor || !form.namaToko || !form.provinsi) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
-      if (!video && !fotos.length) return show('err', 'Mohon upload minimal 1 foto atau video.');
+      if (!video && !fotos.length) return show('err', 'Mohon ambil/pilih minimal 1 foto atau video.');
       if (video && video.size > MAX) return show('err', 'Video ' + mb(video.size) + ' MB melebihi batas 500 MB.');
-      if (!form.lat || !form.lng) { if (!confirm('Titik lokasi toko belum diambil. Tetap kirim tanpa lokasi?')) return; }
+      if (!SAVED_ID && (!form.lat || !form.lng)) { if (!confirm('Titik lokasi toko belum diambil. Tetap kirim tanpa lokasi?')) return; }
 
       var files = (video ? [video] : []).concat(fotos);
       var total = files.reduce(function (s, f) { return s + f.size; }, 0), done = 0;
       var bar = document.getElementById('bar'), fill = document.getElementById('barfill');
       btn.disabled = true; bar.style.display = 'block';
-      show('ok', '⏳ Mengunggah ' + files.length + ' file... jangan tutup halaman.');
       try {
+        if (!SAVED_ID) {
+          show('ok', '⏳ Menyimpan data laporan...');
+          var saved = await callApi('simpanKunjunganPromotor', { form: form });   // simpan DULU (tanpa media)
+          SAVED_ID = saved.id;
+        }
+        show('ok', '⏳ Mengunggah ' + files.length + ' file... jangan tutup halaman.');
         var videoId = null, photoIds = [];
         for (var i = 0; i < files.length; i++) {
           var f = files[i];
@@ -209,9 +222,10 @@
           if (f === video) videoId = fid; else photoIds.push(fid);
           done += f.size; fill.style.width = Math.round(done / total * 100) + '%';
         }
-        show('ok', '⏳ Menyimpan...');
-        var res = await callApi('simpanKunjunganPromotor', { form: form, files: { videoId: videoId, photoIds: photoIds } });
-        show('ok', '✅ Laporan terkirim! Terima kasih. (No. ' + res.id + ')');
+        show('ok', '⏳ Menyimpan media...');
+        await callApiRetry('lampirkanMedia', { id: SAVED_ID, files: { videoId: videoId, photoIds: photoIds } }, 3);
+        show('ok', '✅ Laporan terkirim! Terima kasih. (No. ' + SAVED_ID + ')');
+        SAVED_ID = null; btn.textContent = 'Kirim Laporan';
         document.getElementById('f').reset();
         resetMedia();
         bar.style.display = 'none'; fill.style.width = '0%';
@@ -219,7 +233,12 @@
         document.getElementById('btnGps').textContent = '📍 Ambil Lokasi Toko';
         document.getElementById('gpsInfo').textContent = 'Tekan saat kamu berada DI DEPAN toko, lalu izinkan akses lokasi.';
       } catch (err) {
-        show('err', '❌ ' + (err && err.message ? err.message : err));
+        if (SAVED_ID) {
+          show('err', '⚠️ Data laporan SUDAH tersimpan (No. ' + SAVED_ID + '), tapi media belum terkirim: ' + (err && err.message ? err.message : err) + '. Cek sinyal lalu tekan "🔄 Ulangi Upload".');
+          btn.textContent = '🔄 Ulangi Upload Media';
+        } else {
+          show('err', '❌ ' + (err && err.message ? err.message : err));
+        }
       } finally {
         btn.disabled = false;
       }
