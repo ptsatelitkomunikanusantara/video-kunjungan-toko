@@ -263,6 +263,9 @@
           '<span class="badge b-proc">Menunggu Media</span><span class="chev">▶</span></div>' +
         '<div class="detail">' +
           '<div class="aksi" style="margin:8px 0 4px;">' + mapsBtn + '</div>' +
+          '<label>📍 Set lokasi (kalau belum ada — tempel link/koordinat Google Maps)</label>' +
+          '<input type="text" id="lok_' + id + '" placeholder="tempel link/koordinat Google Maps di sini" onclick="event.stopPropagation()">' +
+          '<div class="hint" id="lokh_' + id + '">Contoh: buka Google Maps → tekan titik lokasi toko → Share/Bagikan → Salin link → tempel di sini.</div>' +
           '<label>🎥 Video (opsional)</label><input type="file" accept="video/*" id="vid_' + id + '">' +
           '<label>📸 Foto (opsional, bisa banyak)</label><input type="file" accept="image/*" multiple id="fot_' + id + '">' +
           '<div class="hint">Tempel video/foto yang dikirim sales/promotor (via WA). Minimal 1 file.</div>' +
@@ -271,12 +274,30 @@
           '<div id="msg_' + id + '" class="hint" style="margin-top:8px;"></div>' +
         '</div></div>';
     }
+    // Ambil koordinat dari link/teks Google Maps (dipakai TS di Bantu Upload).
+    function parseMaps(s) {
+      if (!s) return null;
+      s = String(s).trim();
+      if (/goo\.gl|maps\.app/i.test(s) && !/-?\d{1,3}\.\d+,/.test(s)) return null; // link pendek belum ada koordinat
+      var m = s.match(/@(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/) ||
+              s.match(/[?&](?:q|ll|query|destination|daddr)=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/i) ||
+              s.match(/^\s*(-?\d{1,3}\.\d{2,}),\s*(-?\d{1,3}\.\d{2,})\s*$/);
+      if (!m) return null;
+      var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+      return { lat: lat, lng: lng };
+    }
     async function prosesMedia(ev, id) {
       ev.stopPropagation();
       var btn = ev.currentTarget;
       var video = document.getElementById('vid_' + id).files[0] || null;
       var fotos = Array.prototype.slice.call(document.getElementById('fot_' + id).files || []);
       var msg = document.getElementById('msg_' + id);
+      // Cek link Maps yang ditempel TS (kalau ada).
+      var lokEl = document.getElementById('lok_' + id);
+      var lokTxt = lokEl ? lokEl.value.trim() : '';
+      var lok = lokTxt ? parseMaps(lokTxt) : null;
+      if (lokTxt && !lok) { msg.textContent = '⚠️ Link/koordinat Maps belum terbaca. Pakai link "Bagikan" dari Google Maps, atau tulis koordinat: -6.20,106.81'; return; }
       if (!video && !fotos.length) { msg.textContent = '⚠️ Pilih minimal 1 video atau foto.'; return; }
       if (video && video.size > MAX) { msg.textContent = '⚠️ Video ' + mb(video.size) + ' MB melebihi batas 500 MB.'; return; }
       var files = (video ? [video] : []).concat(fotos);
@@ -285,6 +306,7 @@
       btn.disabled = true; bar.style.display = 'block';
       msg.textContent = '⏳ Mengunggah ' + files.length + ' file... jangan tutup halaman.';
       try {
+        if (lok) { try { await callApi('updateLokasi', { id: id, lat: lok.lat, lng: lok.lng }); } catch (e) {} }
         var videoId = null, photoIds = [];
         for (var i = 0; i < files.length; i++) {
           var f = files[i];
@@ -294,7 +316,7 @@
         }
         msg.textContent = '⏳ Menyimpan...';
         await callApi('lampirkanMedia', { id: id, files: { videoId: videoId, photoIds: photoIds } });
-        msg.textContent = '✅ Media terpasang! (Laporan sales → cek tab "🔎 Cek Level"; promotor langsung dinilai AI.)';
+        msg.textContent = '✅ Media terpasang!' + (lok ? ' 📍 Lokasi tersimpan.' : '') + ' (Laporan sales → cek tab "🔎 Cek Level"; promotor langsung dinilai AI.)';
         setTimeout(muatPending, 1500);
       } catch (err) {
         msg.textContent = '❌ ' + (err && err.message ? err.message : err);
