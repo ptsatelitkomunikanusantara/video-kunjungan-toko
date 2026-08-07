@@ -608,11 +608,19 @@
           fld('🎯 Aksi Prioritas', r.aksi, 'reko') +
           fld('📊 Gap vs Target Level', r.gap, 'reko') +
           fld('🔍 Kenapa Stok Begini', r.diagnosa, 'reko') +
-          fld('🧑 Promotor (analisa)', r.promotorAnalisa, 'reko');
+          fld('🧑 Promotor (analisa)', r.promotorAnalisa, 'reko') +
+          '<div class="fld" style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 10px;margin-top:8px;">' +
+            '<div class="k" style="color:#6d28d9;">🔬 Hasil kurang akurat? Nilai ulang lebih cermat (AI lebih kuat, media yang sama)</div>' +
+            '<button class="dl" style="margin-top:6px;background:#6d28d9;" onclick="nilaiUlangTeliti(event,\'' + esc(r.id) + '\')">🔬 Nilai Ulang Teliti</button>' +
+            '<div id="nt_' + esc(r.id) + '" class="hint" style="margin-top:4px;"></div>' +
+            '<div class="hint">Untuk toko penting — proses agak lebih lama & kuota AI-nya lebih terbatas.</div>' +
+          '</div>';
       } else if (r.status === 'Error') {
         detail = '<div class="fld"><div class="v" style="color:#b45309;">⚠️ AI gagal sekali jalan (biasanya cuma sedang sibuk/503). Data & media aman — tekan tombol di bawah untuk proses ulang.</div></div>' +
           '<button class="btn" style="margin:6px 0 10px;" onclick="nilaiUlang(event,\'' + esc(r.id) + '\')">🔄 Nilai Ulang (AI)</button>' +
           '<div id="nu_' + esc(r.id) + '" class="hint"></div>' +
+          '<button class="dl" style="margin:2px 0 8px;background:#6d28d9;" onclick="nilaiUlangTeliti(event,\'' + esc(r.id) + '\')">🔬 Nilai Ulang Teliti (AI lebih kuat)</button>' +
+          '<div id="nt_' + esc(r.id) + '" class="hint"></div>' +
           fld('Catatan Error', r.catatan);
       } else {
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
@@ -676,6 +684,16 @@
       try {
         await callApi('nilaiUlang', { id: id });
         if (m) m.textContent = '✅ Masuk antrean lagi. AI proses otomatis dalam ±5 menit — refresh sebentar lagi.';
+        setTimeout(muat, 2500);
+      } catch (e) { btn.disabled = false; if (m) m.textContent = '❌ ' + e.message; }
+    }
+    async function nilaiUlangTeliti(ev, id) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget, m = document.getElementById('nt_' + id);
+      btn.disabled = true; if (m) m.textContent = '⏳ Mengantre nilai ulang teliti (AI lebih kuat)...';
+      try {
+        await callApi('nilaiUlangTeliti', { id: id });
+        if (m) m.textContent = '✅ Masuk antrean TELITI. AI kuat membaca media yang sama — proses ±5-10 menit, refresh nanti.';
         setTimeout(muat, 2500);
       } catch (e) { btn.disabled = false; if (m) m.textContent = '❌ ' + e.message; }
     }
