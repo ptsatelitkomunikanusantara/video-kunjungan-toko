@@ -297,7 +297,11 @@
       var lokEl = document.getElementById('lok_' + id);
       var lokTxt = lokEl ? lokEl.value.trim() : '';
       var lok = lokTxt ? parseMaps(lokTxt) : null;
-      if (lokTxt && !lok) { msg.textContent = '⚠️ Link/koordinat Maps belum terbaca. Pakai link "Bagikan" dari Google Maps, atau tulis koordinat: -6.20,106.81'; return; }
+      if (lokTxt && !lok) {
+        msg.textContent = '⏳ Membuka link Maps...';
+        try { var rr = await callApi('resolveMaps', { link: lokTxt }); if (rr && rr.ok) lok = { lat: rr.lat, lng: rr.lng }; } catch (e) {}
+        if (!lok) { msg.textContent = '⚠️ Link Maps belum terbaca. Buka dulu link-nya di browser, lalu salin link panjang yang ada angka koordinatnya — atau tulis koordinat langsung: -6.20,106.81'; return; }
+      }
       if (!video && !fotos.length) { msg.textContent = '⚠️ Pilih minimal 1 video atau foto.'; return; }
       if (video && video.size > MAX) { msg.textContent = '⚠️ Video ' + mb(video.size) + ' MB melebihi batas 500 MB.'; return; }
       var files = (video ? [video] : []).concat(fotos);
@@ -606,7 +610,10 @@
           fld('Lokasi Display', r.display) +
           fld('Layout Toko', r.layout);
       } else if (r.status === 'Error') {
-        detail = fld('Catatan Error', r.catatan);
+        detail = '<div class="fld"><div class="v" style="color:#b45309;">⚠️ AI gagal sekali jalan (biasanya cuma sedang sibuk/503). Data & media aman — tekan tombol di bawah untuk proses ulang.</div></div>' +
+          '<button class="btn" style="margin:6px 0 10px;" onclick="nilaiUlang(event,\'' + esc(r.id) + '\')">🔄 Nilai Ulang (AI)</button>' +
+          '<div id="nu_' + esc(r.id) + '" class="hint"></div>' +
+          fld('Catatan Error', r.catatan);
       } else {
         detail = '<div class="fld"><div class="v">⏳ Masih diproses (' + esc(r.status) + '). Refresh sebentar lagi.</div></div>';
       }
@@ -658,6 +665,16 @@
         s.textContent = '✅ tersimpan — CAPA diperbarui';
         setTimeout(muat, 900);
       } catch (e) { s.textContent = '❌ ' + e.message; }
+    }
+    async function nilaiUlang(ev, id) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget, m = document.getElementById('nu_' + id);
+      btn.disabled = true; if (m) m.textContent = '⏳ Mengantre ulang ke AI...';
+      try {
+        await callApi('nilaiUlang', { id: id });
+        if (m) m.textContent = '✅ Masuk antrean lagi. AI proses otomatis dalam ±5 menit — refresh sebentar lagi.';
+        setTimeout(muat, 2500);
+      } catch (e) { btn.disabled = false; if (m) m.textContent = '❌ ' + e.message; }
     }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
