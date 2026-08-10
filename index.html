@@ -256,7 +256,7 @@
     function pendingItemHtml(r) {
       var id = esc(r.id);
       var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '<span class="hint">📍 lokasi belum ada</span>';
-      return '<div class="item open" id="pi_' + id + '">' +
+      return '<div class="item" id="pi_' + id + '">' +
         '<div class="head" onclick="this.parentNode.classList.toggle(\'open\')">' +
           '<div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + sumberTag(r) + '</div>' +
           '<div class="meta">' + (r.area ? esc(r.area) + ' • ' : '') + esc(r.sales) + ' • ' + esc(r.provinsi) + ' • ' + esc(r.tanggal) + '</div></div>' +
@@ -630,6 +630,7 @@
       var flist = (r.files && r.files.length) ? r.files : (r.link ? [r.link] : []);
       var vid = flist.map(function (u, i) { return '<a class="vid" href="' + u + '" target="_blank">▶️ File ' + (i + 1) + '</a>'; }).join('');
       var mapsBtn = r.maps ? '<a class="vid" href="' + r.maps + '" target="_blank" onclick="event.stopPropagation();">📍 Buka di Maps</a>' : '';
+      var mediaPdf = flist.length ? '<button class="dl" onclick="unduhPdfMedia(event,\'' + esc(r.id) + '\')">📄 Foto+Video (PDF)</button>' : '';
       var dl = (r.status === 'Selesai')
         ? '<button class="dl" onclick="unduhGambar(event,\'' + esc(r.id) + '\')">🖼️ Download Gambar</button>' +
           '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>'
@@ -638,7 +639,7 @@
         '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + sumberTag(r) + '</div>' +
         '<div class="meta">' + (r.area ? esc(r.area) + ' • ' : '') + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
         skorChip(r) + badge(r.status) + '<span class="chev">▶</span></div>' +
-        '<div class="detail">' + detail + '<div class="aksi">' + vid + mapsBtn + dl + '</div></div></div>';
+        '<div class="detail">' + detail + '<div class="aksi">' + vid + mapsBtn + mediaPdf + dl + '</div></div></div>';
     }
     function skorChip(r) {
       if (r.status !== 'Selesai' || r.skor == null || r.skor === '') return '';
@@ -829,6 +830,20 @@
         btn.textContent = '✅ Tersimpan';
         setTimeout(function () { btn.textContent = asli; btn.disabled = false; }, 2500);
       } catch (e) { alert('Gagal buat gambar: ' + (e && e.message ? e.message : e)); btn.textContent = asli; btn.disabled = false; }
+    }
+    async function unduhPdfMedia(ev, id) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget, asli = btn.textContent;
+      btn.textContent = '⏳ Menggabung foto/video...'; btn.disabled = true;
+      try {
+        var res = await callApi('buatPdfMedia', { id: id });
+        var bin = atob(res.b64), arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        var url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+        var a = document.createElement('a'); a.href = url; a.download = res.name;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      } catch (e) { alert('Gagal membuat PDF media: ' + (e && e.message ? e.message : e)); }
+      btn.textContent = asli; btn.disabled = false;
     }
     async function unduhPdf(ev, id) {
       ev.stopPropagation();
