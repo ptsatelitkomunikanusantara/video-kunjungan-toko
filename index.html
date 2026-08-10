@@ -635,11 +635,26 @@
         ? '<button class="dl" onclick="unduhGambar(event,\'' + esc(r.id) + '\')">🖼️ Download Gambar</button>' +
           '<button class="dl" onclick="unduhPdf(event,\'' + esc(r.id) + '\')">⬇️ Download PDF</button>'
         : '';
+      var id = esc(r.id);
+      var editBtn = '<button class="dl" onclick="toggleEdit(event,\'' + id + '\')">✏️ Edit</button>';
+      var hapusBtn = '<button class="dl" style="background:#c02b2b;" onclick="hapusKunjungan(event,\'' + id + '\')">🗑️ Hapus</button>';
+      var edForm =
+        '<div id="edf_' + id + '" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-top:8px;">' +
+        '<div class="k">✏️ Edit data kunjungan</div>' +
+        '<label>Nama Toko</label><input id="ed_toko_' + id + '" value="' + escA(r.toko) + '" onclick="event.stopPropagation()">' +
+        '<label>Level Toko</label><select id="ed_level_' + id + '" onclick="event.stopPropagation()">' + levelOptions(r.jenisToko) + '</select>' +
+        '<label>Area / Kota</label><input id="ed_area_' + id + '" value="' + escA(r.area) + '" onclick="event.stopPropagation()">' +
+        '<label>Nama Sales</label><input id="ed_sales_' + id + '" value="' + escA(r.sales) + '" onclick="event.stopPropagation()">' +
+        '<label>Tambah foto (opsional)</label><input type="file" accept="image/*" multiple id="ed_foto_' + id + '" onclick="event.stopPropagation()">' +
+        '<div style="margin-top:8px;">' +
+          '<button class="dl" onclick="simpanEdit(event,\'' + id + '\',false)">💾 Simpan</button>' +
+          '<button class="dl" style="background:#6d28d9;" onclick="simpanEdit(event,\'' + id + '\',true)">💾 Simpan &amp; Nilai Ulang</button>' +
+        '</div><div id="edm_' + id + '" class="hint" style="margin-top:4px;"></div></div>';
       return '<div class="item" onclick="this.classList.toggle(\'open\')">' +
         '<div class="head"><div><div class="toko">' + esc(r.toko || '(tanpa nama)') + (r.jenisToko ? ' <span class="jt">' + esc(r.jenisToko) + '</span>' : '') + sumberTag(r) + '</div>' +
         '<div class="meta">' + (r.area ? esc(r.area) + ' • ' : '') + esc(r.sales) + ' • ' + esc(r.tanggal) + '</div></div>' +
         skorChip(r) + badge(r.status) + '<span class="chev">▶</span></div>' +
-        '<div class="detail">' + detail + '<div class="aksi">' + vid + mapsBtn + mediaPdf + dl + '</div></div></div>';
+        '<div class="detail">' + detail + edForm + '<div class="aksi">' + vid + mapsBtn + mediaPdf + dl + editBtn + hapusBtn + '</div></div></div>';
     }
     function skorChip(r) {
       if (r.status !== 'Selesai' || r.skor == null || r.skor === '') return '';
@@ -699,6 +714,31 @@
       } catch (e) { btn.disabled = false; if (m) m.textContent = '❌ ' + e.message; }
     }
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function escA(s) { return esc(s).replace(/"/g, '&quot;'); }
+    function toggleEdit(ev, id) { ev.stopPropagation(); var f = document.getElementById('edf_' + id); if (f) f.style.display = (f.style.display === 'none' || !f.style.display) ? 'block' : 'none'; }
+    async function simpanEdit(ev, id, reNilai) {
+      ev.stopPropagation();
+      var btn = ev.currentTarget, m = document.getElementById('edm_' + id);
+      function gv(p) { var e = document.getElementById(p + id); return e ? e.value.trim() : ''; }
+      var data = { toko: gv('ed_toko_'), jenisToko: gv('ed_level_'), area: gv('ed_area_'), sales: gv('ed_sales_') };
+      var fotos = Array.prototype.slice.call((document.getElementById('ed_foto_' + id) || {}).files || []);
+      btn.disabled = true; m.textContent = '⏳ Menyimpan...';
+      try {
+        var files = { photoIds: [] };
+        for (var i = 0; i < fotos.length; i++) { m.textContent = '⏳ Upload foto ' + (i + 1) + '/' + fotos.length + '...'; files.photoIds.push(await uploadOneFile(fotos[i], function () {})); }
+        await callApi('updateDataKunjungan', { id: id, data: data, files: files, reNilai: !!reNilai });
+        m.textContent = reNilai ? '✅ Tersimpan. AI menilai ulang (±5 menit)...' : '✅ Tersimpan.';
+        setTimeout(muat, 1500);
+      } catch (e) { btn.disabled = false; m.textContent = '❌ ' + (e && e.message ? e.message : e); }
+    }
+    async function hapusKunjungan(ev, id) {
+      ev.stopPropagation();
+      if (!confirm('Hapus kunjungan ini dari daftar? Tindakan ini permanen.\n(Foto/video di Google Drive TIDAK ikut terhapus.)')) return;
+      var btn = ev.currentTarget, asli = btn.textContent;
+      btn.disabled = true; btn.textContent = '⏳ Menghapus...';
+      try { await callApi('hapusKunjungan', { id: id }); setTimeout(muat, 600); }
+      catch (e) { btn.disabled = false; btn.textContent = asli; alert('Gagal menghapus: ' + (e && e.message ? e.message : e)); }
+    }
 
     // === Bangun laporan sbg SVG (isi lengkap = PDF), utk diunduh jadi PNG ===
     function bangunSvgLaporan(r) {
