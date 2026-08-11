@@ -115,6 +115,7 @@
         <input id="cari" placeholder="Cari toko / jenis / area / sales..." oninput="render()">
         <button class="reload" onclick="muat()">↻</button>
       </div>
+      <div id="errBar" style="display:none;margin:0 0 8px;"></div>
       <div id="list"><div class="loading">Memuat data...</div></div>
     </div>
 
@@ -556,10 +557,30 @@
     }
     function render() {
       var q = document.getElementById('cari').value.toLowerCase();
+      // Tombol "Ulang Semua Error" — hitung dari SELURUH data (bukan hasil pencarian)
+      var nErr = (DATA || []).filter(function (r) { return r.status === 'Error'; }).length;
+      var eb = document.getElementById('errBar');
+      if (eb) {
+        eb.style.display = nErr ? 'block' : 'none';
+        eb.innerHTML = nErr ? '<button class="btn" style="background:#c02b2b;margin:0;" onclick="nilaiUlangSemuaError()">🔄 Nilai Ulang SEMUA Error (' + nErr + ')</button> <span id="errMsg" class="hint"></span>' : '';
+      }
       var rows = (DATA || []).filter(function (r) { return r.status !== 'Menunggu Media'; })
         .filter(function (r) { return !q || (String(r.toko) + r.area + r.sales + (r.jenisToko || '')).toLowerCase().indexOf(q) > -1; });
       if (!rows.length) { document.getElementById('list').innerHTML = '<div class="empty">Belum ada data.</div>'; return; }
       document.getElementById('list').innerHTML = rows.map(itemHtml).join('');
+    }
+    async function nilaiUlangSemuaError() {
+      var errs = (DATA || []).filter(function (r) { return r.status === 'Error'; });
+      if (!errs.length) return;
+      if (!confirm('Nilai ulang ' + errs.length + ' kartu Error sekaligus? AI akan memproses semuanya (±5-10 menit).')) return;
+      var m = document.getElementById('errMsg');
+      var ok = 0, gagal = 0;
+      for (var i = 0; i < errs.length; i++) {
+        if (m) m.textContent = '⏳ Mengantre ' + (i + 1) + '/' + errs.length + '...';
+        try { await callApi('nilaiUlang', { id: errs[i].id }); ok++; } catch (e) { gagal++; }
+      }
+      if (m) m.textContent = '✅ ' + ok + ' diantre ulang' + (gagal ? (', ' + gagal + ' gagal') : '') + '. AI proses otomatis (±5-10 menit).';
+      setTimeout(function () { muat(true); }, 2500);
     }
     function badge(s) {
       s = String(s || '');
