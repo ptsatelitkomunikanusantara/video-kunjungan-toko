@@ -74,8 +74,9 @@
         <input type="file" accept="image/*" capture="environment" id="fotCam" style="display:none" onchange="addFotos(this)">
         <input type="file" accept="image/*" multiple id="fotGal" style="display:none" onchange="addFotos(this)">
         <div id="fotInfo" class="hint">Belum ada foto.</div>
+        <div id="fotThumbs" style="margin-top:6px;"></div>
 
-        <div class="hint" style="line-height:1.7;">🎥 <b>Video:</b> rekam <b>sekeliling isi toko</b> (layout &amp; kondisi).<br>📸 <b>Foto stok aktif</b> — <b>WAJIB banyak &amp; jelas</b>: Handphone, aksesoris, &amp; IoT.<br>ℹ️ <b>Dummy box tidak perlu difoto.</b></div>
+        <div class="hint" style="line-height:1.7;">🎥 <b>Video:</b> rekam <b>sekeliling isi toko</b> (layout &amp; kondisi).<br>📸 <b>Foto stok</b> — <b>WAJIB banyak &amp; jelas</b>: Handphone, aksesoris, &amp; IoT.<br>✍️ <b>Ada dummy box?</b> Tekan <b>"✏️ Tandai"</b> di foto lalu <b>beri tanda bebas</b> (lingkari / silang / coret) pada tiap dummy → biar AI tahu itu pajangan, bukan stok jualan.</div>
 
         <label>📍 Titik Lokasi Toko <span class="req">*</span></label>
         <button type="button" id="btnGps" class="btn2" onclick="ambilLokasi()">📍 Ambil Lokasi Toko</button>
@@ -91,6 +92,21 @@
         <div id="bar"><div id="barfill"></div></div>
         <div id="msg"></div>
       </form>
+    </div>
+  </div>
+
+  <!-- Panel tandai dummy (gambar bebas di atas foto) -->
+  <div id="anno" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;">
+    <div style="color:#fff;padding:8px 12px;background:#111;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;">
+      <b>Beri tanda pada tiap DUMMY (lingkari/silang/coret)</b>
+      <span style="flex:1"></span>
+      <button type="button" class="mbtn" style="padding:6px 12px;" onclick="annoUndo()">↶ Undo</button>
+      <button type="button" class="mbtn" style="padding:6px 12px;" onclick="annoClear()">🗑️ Hapus</button>
+      <button type="button" class="mbtn" style="padding:6px 12px;background:#9aa5b1;color:#fff;" onclick="tutupAnno()">Batal</button>
+      <button type="button" class="btn" style="width:auto;padding:6px 16px;margin:0;" onclick="annoDone()">✔️ Selesai</button>
+    </div>
+    <div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:6px;">
+      <canvas id="annoCv" style="max-width:100%;max-height:100%;touch-action:none;background:#222;"></canvas>
     </div>
   </div>
 
@@ -127,17 +143,114 @@
       var fs = Array.prototype.slice.call(inp.files || []);
       var gagal = 0;
       for (var i = 0; i < fs.length; i++) {
-        try { var buf = await fs[i].arrayBuffer(); FOTOS.push(new File([buf], fs[i].name || ('foto' + (FOTOS.length + 1) + '.jpg'), { type: fs[i].type || 'image/jpeg' })); }
+        try { var buf = await fs[i].arrayBuffer(); FOTOS.push({ orig: new File([buf], fs[i].name || ('foto' + (FOTOS.length + 1) + '.jpg'), { type: fs[i].type || 'image/jpeg' }), strokes: [], marked: false }); }
         catch (e) { gagal++; }
       }
       inp.value = '';
-      document.getElementById('fotInfo').textContent = (FOTOS.length ? ('✅ ' + FOTOS.length + ' foto dipilih') : 'Belum ada foto.') + (gagal ? (' · ' + gagal + ' gagal dibaca, ulangi') : '');
+      document.getElementById('fotInfo').textContent = (FOTOS.length ? ('✅ ' + FOTOS.length + ' foto') : 'Belum ada foto.') + (gagal ? (' · ' + gagal + ' gagal dibaca, ulangi') : '');
+      renderThumbs();
+    }
+    function renderThumbs() {
+      var c = document.getElementById('fotThumbs'); if (!c) return;
+      c.innerHTML = '';
+      FOTOS.forEach(function (o, i) {
+        var url = URL.createObjectURL(o.orig);
+        var d = document.createElement('div');
+        d.style.cssText = 'display:inline-block;margin:3px;vertical-align:top;text-align:center;';
+        d.innerHTML = '<img src="' + url + '" style="width:88px;height:88px;object-fit:cover;border-radius:8px;border:2px solid ' + (o.marked ? '#d92662' : '#cbd2d9') + ';">' +
+          '<div style="margin-top:2px;">' +
+          '<button type="button" style="font-size:11px;padding:3px 6px;" onclick="bukaAnno(' + i + ')">' + (o.marked ? '✅ ditandai' : '✏️ Tandai') + '</button> ' +
+          '<button type="button" style="font-size:11px;padding:3px 6px;" onclick="hapusFoto(' + i + ')">🗑️</button>' +
+          '</div>';
+        c.appendChild(d);
+      });
+    }
+    function hapusFoto(i) {
+      FOTOS.splice(i, 1); renderThumbs();
+      document.getElementById('fotInfo').textContent = FOTOS.length ? ('✅ ' + FOTOS.length + ' foto') : 'Belum ada foto.';
+    }
+    // ---- Panel tandai dummy: gambar bebas di atas foto ----
+    var ANNO = { idx: -1, img: null, strokes: [], drawing: false };
+    function bukaAnno(i) {
+      var o = FOTOS[i]; ANNO.idx = i;
+      ANNO.strokes = (o.strokes || []).map(function (s) { return s.map(function (p) { return { x: p.x, y: p.y }; }); });
+      var url = URL.createObjectURL(o.orig), img = new Image();
+      img.onload = function () { ANNO.img = img; annoDraw(); document.getElementById('anno').style.display = 'flex'; };
+      img.onerror = function () { URL.revokeObjectURL(url); alert('Foto tidak bisa dibuka.'); };
+      img.src = url;
+    }
+    function annoDraw() {
+      var cv = document.getElementById('annoCv'), ctx = cv.getContext('2d');
+      cv.width = ANNO.img.naturalWidth; cv.height = ANNO.img.naturalHeight;
+      ctx.drawImage(ANNO.img, 0, 0);
+      var w = Math.max(6, Math.round(cv.width * 0.010));
+      ANNO.strokes.forEach(function (s) {
+        if (!s.length) return;
+        [['rgba(255,255,255,0.95)', w + Math.max(4, w * 0.7)], ['#e01e5a', w]].forEach(function (st) {
+          ctx.beginPath(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+          ctx.strokeStyle = st[0]; ctx.lineWidth = st[1];
+          ctx.moveTo(s[0].x, s[0].y);
+          for (var k = 1; k < s.length; k++) ctx.lineTo(s[k].x, s[k].y);
+          if (s.length === 1) { ctx.lineTo(s[0].x + 0.1, s[0].y + 0.1); }
+          ctx.stroke();
+        });
+      });
+    }
+    function annoPos(ev) {
+      var cv = document.getElementById('annoCv'), rect = cv.getBoundingClientRect();
+      var cx = (ev.touches ? ev.touches[0].clientX : ev.clientX);
+      var cy = (ev.touches ? ev.touches[0].clientY : ev.clientY);
+      return { x: (cx - rect.left) / rect.width * cv.width, y: (cy - rect.top) / rect.height * cv.height };
+    }
+    function annoStart(ev) { ev.preventDefault(); ANNO.drawing = true; ANNO.strokes.push([annoPos(ev)]); annoDraw(); }
+    function annoMove(ev) { if (!ANNO.drawing) return; ev.preventDefault(); ANNO.strokes[ANNO.strokes.length - 1].push(annoPos(ev)); annoDraw(); }
+    function annoEnd() { ANNO.drawing = false; }
+    function annoUndo() { ANNO.strokes.pop(); annoDraw(); }
+    function annoClear() { ANNO.strokes = []; annoDraw(); }
+    function tutupAnno() { document.getElementById('anno').style.display = 'none'; ANNO.img = null; ANNO.drawing = false; }
+    function annoDone() {
+      var o = FOTOS[ANNO.idx];
+      o.strokes = ANNO.strokes.map(function (s) { return s.map(function (p) { return { x: p.x, y: p.y }; }); });
+      o.marked = o.strokes.length > 0;
+      tutupAnno(); renderThumbs();
+    }
+    function komposit(o) {
+      return new Promise(function (res) {
+        if (!o.marked || !o.strokes.length) { res(o.orig); return; }
+        var url = URL.createObjectURL(o.orig), img = new Image();
+        img.onload = function () {
+          var cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+          var ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+          var w = Math.max(6, Math.round(cv.width * 0.010));
+          o.strokes.forEach(function (s) {
+            if (!s.length) return;
+            [['rgba(255,255,255,0.95)', w + Math.max(4, w * 0.7)], ['#e01e5a', w]].forEach(function (st) {
+              ctx.beginPath(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+              ctx.strokeStyle = st[0]; ctx.lineWidth = st[1];
+              ctx.moveTo(s[0].x, s[0].y);
+              for (var k = 1; k < s.length; k++) ctx.lineTo(s[k].x, s[k].y);
+              if (s.length === 1) { ctx.lineTo(s[0].x + 0.1, s[0].y + 0.1); }
+              ctx.stroke();
+            });
+          });
+          URL.revokeObjectURL(url);
+          cv.toBlob(function (b) { res(new File([b], (o.orig.name || 'foto.jpg').replace(/\.\w+$/, '') + '_tandai.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.9);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); res(o.orig); };
+        img.src = url;
+      });
     }
     function resetMedia() {
       VIDEO = null; FOTOS = [];
       document.getElementById('vidInfo').textContent = 'Belum ada video.';
       document.getElementById('fotInfo').textContent = 'Belum ada foto.';
+      var c = document.getElementById('fotThumbs'); if (c) c.innerHTML = '';
     }
+    (function () {
+      var cv = document.getElementById('annoCv'); if (!cv) return;
+      cv.addEventListener('mousedown', annoStart); cv.addEventListener('mousemove', annoMove); window.addEventListener('mouseup', annoEnd);
+      cv.addEventListener('touchstart', annoStart, { passive: false }); cv.addEventListener('touchmove', annoMove, { passive: false }); window.addEventListener('touchend', annoEnd);
+    })();
 
     async function callApi(action, params) {
       var body = Object.assign({ action: action }, params || {});
@@ -245,16 +358,18 @@
         namaToko: val('namaToko'), provinsi: val('provinsi'),
         lat: LOKASI.lat, lng: LOKASI.lng
       };
-      var video = VIDEO, fotos = FOTOS.slice();
+      var video = VIDEO;
       if (!form.lat || !form.lng) {   // GPS gagal -> pakai link/koordinat Maps yg ditempel
         var pm = parseMaps(val('mapsPaste'));
         if (pm) { LOKASI.lat = pm.lat; LOKASI.lng = pm.lng; form.lat = pm.lat; form.lng = pm.lng; }
       }
       if (!form.tanggalKunjungan || !form.namaPromotor || !form.namaToko || !form.provinsi) return show('err', 'Mohon lengkapi semua kolom bertanda *.');
-      if (!video && !fotos.length) return show('err', 'Mohon ambil/pilih minimal 1 foto atau video.');
+      if (!video && !FOTOS.length) return show('err', 'Mohon ambil/pilih minimal 1 foto atau video.');
       if (video && video.size > MAX) return show('err', 'Video ' + mb(video.size) + ' MB melebihi batas 500 MB.');
       if (!SAVED_ID && (!form.lat || !form.lng)) { if (!confirm('Titik lokasi toko belum diambil. Tetap kirim tanpa lokasi?')) return; }
 
+      var fotos = [];
+      for (var ci = 0; ci < FOTOS.length; ci++) fotos.push(await komposit(FOTOS[ci]));  // tempelkan tanda dummy ke foto
       var files = (video ? [video] : []).concat(fotos);
       var total = files.reduce(function (s, f) { return s + f.size; }, 0), done = 0;
       var bar = document.getElementById('bar'), fill = document.getElementById('barfill');
