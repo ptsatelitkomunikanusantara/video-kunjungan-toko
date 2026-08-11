@@ -267,8 +267,9 @@
           '<input type="text" id="lok_' + id + '" placeholder="tempel link/koordinat Google Maps di sini" onclick="event.stopPropagation()">' +
           '<div class="hint" id="lokh_' + id + '">Contoh: buka Google Maps → tekan titik lokasi toko → Share/Bagikan → Salin link → tempel di sini.</div>' +
           '<label>🎥 Video (opsional)</label><input type="file" accept="video/*" id="vid_' + id + '">' +
-          '<label>📸 Foto (opsional, bisa banyak)</label><input type="file" accept="image/*" multiple id="fot_' + id + '">' +
-          '<div class="hint">Tempel video/foto yang dikirim sales/promotor (via WA). Minimal 1 file.</div>' +
+          '<label>📸 Foto (opsional, bisa banyak)</label><input type="file" accept="image/*" multiple id="fot_' + id + '" onchange="fotoInputChange(this,\'pend_' + id + '\')" onclick="event.stopPropagation()">' +
+          '<div id="thumbs_pend_' + id + '" style="margin-top:6px;"></div>' +
+          '<div class="hint">Tempel video/foto yang dikirim sales/promotor (via WA). Minimal 1 file. ✍️ Ada dummy? Tekan ✏️ di foto lalu beri tanda.</div>' +
           '<button class="btn" onclick="prosesMedia(event,\'' + id + '\')">Upload &amp; Proses</button>' +
           '<div id="bar_' + id + '" style="height:8px;background:#e4e7eb;border-radius:5px;margin-top:12px;overflow:hidden;display:none;"><div id="fill_' + id + '" style="height:100%;width:0%;background:#0b3d91;transition:width .2s;"></div></div>' +
           '<div id="msg_' + id + '" class="hint" style="margin-top:8px;"></div>' +
@@ -291,7 +292,7 @@
       ev.stopPropagation();
       var btn = ev.currentTarget;
       var video = document.getElementById('vid_' + id).files[0] || null;
-      var fotos = Array.prototype.slice.call(document.getElementById('fot_' + id).files || []);
+      var mkey = 'pend_' + id, arr = MEDIA[mkey] || [];
       var msg = document.getElementById('msg_' + id);
       // Cek link Maps yang ditempel TS (kalau ada).
       var lokEl = document.getElementById('lok_' + id);
@@ -302,8 +303,9 @@
         try { var rr = await callApi('resolveMaps', { link: lokTxt }); if (rr && rr.ok) lok = { lat: rr.lat, lng: rr.lng }; } catch (e) {}
         if (!lok) { msg.textContent = '⚠️ Link Maps belum terbaca. Buka dulu link-nya di browser, lalu salin link panjang yang ada angka koordinatnya — atau tulis koordinat langsung: -6.20,106.81'; return; }
       }
-      if (!video && !fotos.length) { msg.textContent = '⚠️ Pilih minimal 1 video atau foto.'; return; }
+      if (!video && !arr.length) { msg.textContent = '⚠️ Pilih minimal 1 video atau foto.'; return; }
       if (video && video.size > MAX) { msg.textContent = '⚠️ Video ' + mb(video.size) + ' MB melebihi batas 500 MB.'; return; }
+      var fotos = []; for (var pi = 0; pi < arr.length; pi++) fotos.push(await kompositM(arr[pi]));  // tempelkan tanda dummy
       var files = (video ? [video] : []).concat(fotos);
       var total = files.reduce(function (s, f) { return s + f.size; }, 0), done = 0;
       var bar = document.getElementById('bar_' + id), fill = document.getElementById('fill_' + id);
@@ -320,6 +322,7 @@
         }
         msg.textContent = '⏳ Menyimpan...';
         await callApi('lampirkanMedia', { id: id, files: { videoId: videoId, photoIds: photoIds } });
+        delete MEDIA[mkey];
         msg.textContent = '✅ Media terpasang!' + (lok ? ' 📍 Lokasi tersimpan.' : '') + ' (Laporan sales → cek tab "🔎 Cek Level"; promotor langsung dinilai AI.)';
         setTimeout(muatPending, 1500);
       } catch (err) {
@@ -645,7 +648,8 @@
         '<label>Level Toko</label><select id="ed_level_' + id + '" onclick="event.stopPropagation()">' + levelOptions(r.jenisToko) + '</select>' +
         '<label>Area / Kota</label><input id="ed_area_' + id + '" value="' + escA(r.area) + '" onclick="event.stopPropagation()">' +
         '<label>Nama Sales</label><input id="ed_sales_' + id + '" value="' + escA(r.sales) + '" onclick="event.stopPropagation()">' +
-        '<label>Tambah foto (opsional)</label><input type="file" accept="image/*" multiple id="ed_foto_' + id + '" onclick="event.stopPropagation()">' +
+        '<label>Tambah foto (opsional)</label><input type="file" accept="image/*" multiple id="ed_foto_' + id + '" onchange="fotoInputChange(this,\'edit_' + id + '\')" onclick="event.stopPropagation()">' +
+        '<div id="thumbs_edit_' + id + '" style="margin-top:6px;"></div>' +
         '<div style="margin-top:8px;">' +
           '<button class="dl" onclick="simpanEdit(event,\'' + id + '\',false)">💾 Simpan</button>' +
           '<button class="dl" style="background:#6d28d9;" onclick="simpanEdit(event,\'' + id + '\',true)">💾 Simpan &amp; Nilai Ulang</button>' +
@@ -721,12 +725,13 @@
       var btn = ev.currentTarget, m = document.getElementById('edm_' + id);
       function gv(p) { var e = document.getElementById(p + id); return e ? e.value.trim() : ''; }
       var data = { toko: gv('ed_toko_'), jenisToko: gv('ed_level_'), area: gv('ed_area_'), sales: gv('ed_sales_') };
-      var fotos = Array.prototype.slice.call((document.getElementById('ed_foto_' + id) || {}).files || []);
+      var mkey = 'edit_' + id, arr = MEDIA[mkey] || [];
       btn.disabled = true; m.textContent = '⏳ Menyimpan...';
       try {
         var files = { photoIds: [] };
-        for (var i = 0; i < fotos.length; i++) { m.textContent = '⏳ Upload foto ' + (i + 1) + '/' + fotos.length + '...'; files.photoIds.push(await uploadOneFile(fotos[i], function () {})); }
+        for (var i = 0; i < arr.length; i++) { m.textContent = '⏳ Upload foto ' + (i + 1) + '/' + arr.length + '...'; files.photoIds.push(await uploadOneFile(await kompositM(arr[i]), function () {})); }
         await callApi('updateDataKunjungan', { id: id, data: data, files: files, reNilai: !!reNilai });
+        delete MEDIA[mkey];
         m.textContent = reNilai ? '✅ Tersimpan. AI menilai ulang (±5 menit)...' : '✅ Tersimpan.';
         setTimeout(muat, 1500);
       } catch (e) { btn.disabled = false; m.textContent = '❌ ' + (e && e.message ? e.message : e); }
@@ -738,6 +743,103 @@
       btn.disabled = true; btn.textContent = '⏳ Menghapus...';
       try { await callApi('hapusKunjungan', { id: id }); setTimeout(muat, 600); }
       catch (e) { btn.disabled = false; btn.textContent = asli; alert('Gagal menghapus: ' + (e && e.message ? e.message : e)); }
+    }
+
+    // ===== Anotasi TANDAI DUMMY (dipakai TS di Bantu Upload & Edit) =====
+    var MEDIA = {};
+    var ANNO = { key: null, idx: -1, img: null, strokes: [], drawing: false };
+    (function () {
+      document.body.insertAdjacentHTML('beforeend',
+        '<div id="annoD" style="display:none;position:fixed;inset:0;background:#000;z-index:99999;flex-direction:column;">' +
+        '<div style="color:#fff;padding:8px 12px;background:#111;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;">' +
+        '<b>Beri tanda pada tiap DUMMY (lingkari/silang/coret)</b><span style="flex:1"></span>' +
+        '<button type="button" class="dl" onclick="annoUndoM()">↶ Undo</button>' +
+        '<button type="button" class="dl" onclick="annoClearM()">🗑️ Hapus</button>' +
+        '<button type="button" class="dl" style="background:#9aa5b1;" onclick="tutupAnnoM()">Batal</button>' +
+        '<button type="button" class="dl" style="background:#137333;" onclick="annoDoneM()">✔️ Selesai</button></div>' +
+        '<div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:6px;">' +
+        '<canvas id="annoDCv" style="max-width:100%;max-height:100%;touch-action:none;background:#222;"></canvas></div></div>');
+      var cv = document.getElementById('annoDCv');
+      cv.addEventListener('mousedown', annoStartM); cv.addEventListener('mousemove', annoMoveM); window.addEventListener('mouseup', annoEndM);
+      cv.addEventListener('touchstart', annoStartM, { passive: false }); cv.addEventListener('touchmove', annoMoveM, { passive: false }); window.addEventListener('touchend', annoEndM);
+    })();
+    async function fotoInputChange(inp, key) {
+      MEDIA[key] = MEDIA[key] || [];
+      var fs = Array.prototype.slice.call(inp.files || []);
+      for (var i = 0; i < fs.length; i++) { try { var buf = await fs[i].arrayBuffer(); MEDIA[key].push({ orig: new File([buf], fs[i].name || ('foto' + (MEDIA[key].length + 1) + '.jpg'), { type: fs[i].type || 'image/jpeg' }), strokes: [], marked: false }); } catch (e) {} }
+      inp.value = ''; renderThumbsM(key);
+    }
+    function renderThumbsM(key) {
+      var c = document.getElementById('thumbs_' + key); if (!c) return; c.innerHTML = '';
+      (MEDIA[key] || []).forEach(function (o, i) {
+        var url = URL.createObjectURL(o.orig);
+        var d = document.createElement('div'); d.style.cssText = 'display:inline-block;margin:3px;vertical-align:top;text-align:center;';
+        d.innerHTML = '<img src="' + url + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid ' + (o.marked ? '#d92662' : '#cbd2d9') + ';">' +
+          '<div style="margin-top:2px;"><button type="button" class="dl" style="font-size:11px;padding:3px 6px;" onclick="bukaAnnoM(event,\'' + key + '\',' + i + ')">' + (o.marked ? '✅' : '✏️') + '</button> ' +
+          '<button type="button" class="dl" style="font-size:11px;padding:3px 6px;" onclick="hapusFotoM(event,\'' + key + '\',' + i + ')">🗑️</button></div>';
+        c.appendChild(d);
+      });
+    }
+    function hapusFotoM(ev, key, i) { ev.stopPropagation(); (MEDIA[key] || []).splice(i, 1); renderThumbsM(key); }
+    function bukaAnnoM(ev, key, i) {
+      ev.stopPropagation(); var o = MEDIA[key][i]; ANNO.key = key; ANNO.idx = i;
+      ANNO.strokes = (o.strokes || []).map(function (s) { return s.map(function (p) { return { x: p.x, y: p.y }; }); });
+      var url = URL.createObjectURL(o.orig), img = new Image();
+      img.onload = function () { ANNO.img = img; annoDrawM(); document.getElementById('annoD').style.display = 'flex'; };
+      img.onerror = function () { URL.revokeObjectURL(url); alert('Foto tidak bisa dibuka.'); };
+      img.src = url;
+    }
+    function annoDrawM() {
+      var cv = document.getElementById('annoDCv'), ctx = cv.getContext('2d');
+      cv.width = ANNO.img.naturalWidth; cv.height = ANNO.img.naturalHeight; ctx.drawImage(ANNO.img, 0, 0);
+      var w = Math.max(6, Math.round(cv.width * 0.010));
+      ANNO.strokes.forEach(function (s) {
+        if (!s.length) return;
+        [['rgba(255,255,255,0.95)', w + Math.max(4, w * 0.7)], ['#e01e5a', w]].forEach(function (st) {
+          ctx.beginPath(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = st[0]; ctx.lineWidth = st[1];
+          ctx.moveTo(s[0].x, s[0].y); for (var k = 1; k < s.length; k++) ctx.lineTo(s[k].x, s[k].y);
+          if (s.length === 1) ctx.lineTo(s[0].x + 0.1, s[0].y + 0.1); ctx.stroke();
+        });
+      });
+    }
+    function annoPosM(ev) {
+      var cv = document.getElementById('annoDCv'), rect = cv.getBoundingClientRect();
+      var cx = (ev.touches ? ev.touches[0].clientX : ev.clientX), cy = (ev.touches ? ev.touches[0].clientY : ev.clientY);
+      return { x: (cx - rect.left) / rect.width * cv.width, y: (cy - rect.top) / rect.height * cv.height };
+    }
+    function annoStartM(ev) { ev.preventDefault(); ANNO.drawing = true; ANNO.strokes.push([annoPosM(ev)]); annoDrawM(); }
+    function annoMoveM(ev) { if (!ANNO.drawing) return; ev.preventDefault(); ANNO.strokes[ANNO.strokes.length - 1].push(annoPosM(ev)); annoDrawM(); }
+    function annoEndM() { ANNO.drawing = false; }
+    function annoUndoM() { ANNO.strokes.pop(); annoDrawM(); }
+    function annoClearM() { ANNO.strokes = []; annoDrawM(); }
+    function tutupAnnoM() { document.getElementById('annoD').style.display = 'none'; ANNO.img = null; ANNO.drawing = false; }
+    function annoDoneM() {
+      var o = MEDIA[ANNO.key][ANNO.idx];
+      o.strokes = ANNO.strokes.map(function (s) { return s.map(function (p) { return { x: p.x, y: p.y }; }); });
+      o.marked = o.strokes.length > 0; tutupAnnoM(); renderThumbsM(ANNO.key);
+    }
+    function kompositM(o) {
+      return new Promise(function (res) {
+        if (!o.marked || !o.strokes.length) { res(o.orig); return; }
+        var url = URL.createObjectURL(o.orig), img = new Image();
+        img.onload = function () {
+          var cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+          var ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+          var w = Math.max(6, Math.round(cv.width * 0.010));
+          o.strokes.forEach(function (s) {
+            if (!s.length) return;
+            [['rgba(255,255,255,0.95)', w + Math.max(4, w * 0.7)], ['#e01e5a', w]].forEach(function (st) {
+              ctx.beginPath(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = st[0]; ctx.lineWidth = st[1];
+              ctx.moveTo(s[0].x, s[0].y); for (var k = 1; k < s.length; k++) ctx.lineTo(s[k].x, s[k].y);
+              if (s.length === 1) ctx.lineTo(s[0].x + 0.1, s[0].y + 0.1); ctx.stroke();
+            });
+          });
+          URL.revokeObjectURL(url);
+          cv.toBlob(function (b) { res(new File([b], (o.orig.name || 'foto.jpg').replace(/\.\w+$/, '') + '_tandai.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.9);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); res(o.orig); };
+        img.src = url;
+      });
     }
 
     // === Bangun laporan sbg SVG (isi lengkap = PDF), utk diunduh jadi PNG ===
