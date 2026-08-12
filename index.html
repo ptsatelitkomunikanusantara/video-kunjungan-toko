@@ -145,7 +145,10 @@
     async function callApi(action, params) {
       var body = Object.assign({ action: action }, params || {});
       var r = await fetch(APP_URL, { method: 'POST', body: JSON.stringify(body) });
-      var j = await r.json();
+      var txt = await r.text();
+      var j;
+      try { j = JSON.parse(txt); }
+      catch (e) { throw new Error('Server Google lagi lambat/sibuk (balasannya bukan data). Data aman — coba lagi sebentar.'); }
       if (!j.ok) throw new Error(j.error || 'Gagal memproses');
       return j.result;
     }
@@ -224,6 +227,18 @@
       throw new Error('File "' + file.name + '" tidak bisa dibaca (' + (last && last.message ? last.message : 'coba file lain / kecilkan resolusi') + ')');
     }
     async function uploadOneFile(file, onProgress) {
+      // FOTO kecil: upload sekali-jalan (1 request + retry) — lebih andal saat Drive lelet
+      if (file.type && file.type.indexOf('image/') === 0 && file.size <= 20 * 1024 * 1024) {
+        var b64f = await bacaChunk(file, 0, file.size), last;
+        for (var a = 0; a < 6; a++) {
+          try {
+            var resF = await callApi('simpanFotoB64', { fileName: file.name, mimeType: file.type, b64: b64f });
+            if (resF && resF.fileId) { if (onProgress) onProgress(file.size); return resF.fileId; }
+            throw new Error('gagal');
+          } catch (e) { last = e; await new Promise(function (r) { setTimeout(r, 800 * (a + 1)); }); }
+        }
+        throw new Error('Upload foto "' + file.name + '" gagal: ' + (last && last.message ? last.message : ''));
+      }
       var sid = await callApi('mulaiUpload', { fileName: file.name, mimeType: file.type });
       var start = 0, fileId = null;
       while (start < file.size) {
