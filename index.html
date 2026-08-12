@@ -625,7 +625,7 @@
       if (m) m.textContent = '✅ ' + ok + ' diantre ulang' + (gagal ? (', ' + gagal + ' gagal') : '') + '. AI proses otomatis (±5-10 menit).';
       setTimeout(function () { muat(true); }, 2500);
     }
-    // Download database (CSV, kebuka di Excel) — otomatis HANYA provinsi yang login (admin = semua)
+    // Download database (.xls tabel rapi, kebuka di Excel) — otomatis HANYA provinsi yang login (admin = semua)
     function unduhDatabase() {
       var rows = DATA || [];
       if (!rows.length) { alert('Belum ada data. Buka tab Hasil & tunggu termuat, lalu coba lagi.'); return; }
@@ -643,14 +643,20 @@
         ['Pangsa Stok', 'pangsa'], ['Rekomendasi Penempatan', 'rekomendasi'], ['Lokasi Display', 'display'],
         ['Branding & POSM', 'branding'], ['Layout Toko', 'layout'], ['Promotor di Toko', 'promotor'], ['Lokasi Maps', 'maps']
       ];
-      function sel(r, key) { var v = (typeof key === 'function') ? key(r) : r[key]; v = (v == null) ? '' : String(v); return '"' + v.replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"'; }
-      var lines = [cols.map(function (c) { return '"' + c[0] + '"'; }).join(',')];
-      rows.forEach(function (r) { lines.push(cols.map(function (c) { return sel(r, c[1]); }).join(',')); });
-      var csv = '﻿' + lines.join('\r\n');   // BOM (eksplisit) biar Excel baca huruf/aksen dengan benar
-      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      function ex2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+      function sel(r, key) { var v = (typeof key === 'function') ? key(r) : r[key]; return ex2(v == null ? '' : String(v).replace(/\r?\n/g, ' • ')); }
+      var thead = '<tr>' + cols.map(function (c) { return '<th>' + ex2(c[0]) + '</th>'; }).join('') + '</tr>';
+      var tbody = rows.map(function (r) { return '<tr>' + cols.map(function (c) { return '<td>' + sel(r, c[1]) + '</td>'; }).join('') + '</tr>'; }).join('');
+      // File .xls berisi tabel HTML -> Excel buka jadi kolom rapi (tak tergantung koma/titik-koma)
+      var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">' +
+        '<style>table{border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11px;} ' +
+        'th{background:#0b3d91;color:#ffffff;font-weight:bold;border:1px solid #7f8c9b;padding:5px 8px;text-align:left;white-space:nowrap;} ' +
+        'td{border:1px solid #cbd2d9;padding:3px 8px;vertical-align:top;mso-number-format:"\\@";}</style></head>' +
+        '<body><table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></body></html>';
+      var blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
       var tgl = new Date().toISOString().slice(0, 10);
-      a.download = 'Database_' + String(prov).replace(/[^\w]+/g, '_') + '_' + tgl + '.csv';
+      a.download = 'Database_' + String(prov).replace(/[^\w]+/g, '_') + '_' + tgl + '.xls';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
     }
