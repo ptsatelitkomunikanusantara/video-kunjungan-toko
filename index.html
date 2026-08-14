@@ -641,10 +641,19 @@
         ['Gap vs Target', 'gap'], ['Kenapa Stok Begini', 'diagnosa'], ['Promotor (analisa)', 'promotorAnalisa'],
         ['Merek Terdeteksi', 'merek'], ['Tipe / Model', 'tipe'], ['Estimasi Stok', 'stok'],
         ['Pangsa Stok', 'pangsa'], ['Rekomendasi Penempatan', 'rekomendasi'], ['Lokasi Display', 'display'],
-        ['Branding & POSM', 'branding'], ['Layout Toko', 'layout'], ['Promotor di Toko', 'promotor'], ['Lokasi Maps', 'maps']
+        ['Branding & POSM', 'branding'], ['Layout Toko', 'layout'], ['Promotor di Toko', 'promotor'], ['Lokasi Maps', 'maps'],
+        ['Link Foto/Video', '__files__']
       ];
       function ex2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-      function sel(r, key) { var v = (typeof key === 'function') ? key(r) : r[key]; return ex2(v == null ? '' : String(v).replace(/\r?\n/g, ' • ')); }
+      function sel(r, key) {
+        if (key === '__files__') {   // kolom link foto/video: buat tautan klik ke Drive (bukan teks biasa)
+          var fs = r.files || [];
+          if (!fs.length) return '';
+          return fs.map(function (u, i) { return '<a href="' + String(u).replace(/"/g, '&quot;') + '">File ' + (i + 1) + '</a>'; }).join(' | ');
+        }
+        var v = (typeof key === 'function') ? key(r) : r[key];
+        return ex2(v == null ? '' : String(v).replace(/\r?\n/g, ' • '));
+      }
       var thead = '<tr>' + cols.map(function (c) { return '<th>' + ex2(c[0]) + '</th>'; }).join('') + '</tr>';
       var tbody = rows.map(function (r) { return '<tr>' + cols.map(function (c) { return '<td>' + sel(r, c[1]) + '</td>'; }).join('') + '</tr>'; }).join('');
       // File .xls berisi tabel HTML -> Excel buka jadi kolom rapi (tak tergantung koma/titik-koma)
