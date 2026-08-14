@@ -114,7 +114,9 @@
       <div class="barr">
         <input id="cari" placeholder="Cari toko / jenis / area / sales..." oninput="render()">
         <button class="reload" onclick="muat()">↻</button>
-        <button class="reload" onclick="unduhDatabase()" title="Download database (Excel) — hanya provinsimu">📄 Excel</button>
+        <button class="reload" onclick="unduhDatabase('all')" title="Excel semua toko LENGKAP di areamu">📄 Excel Semua</button>
+        <button class="reload" onclick="unduhDatabase('today')" title="Excel toko LENGKAP hari ini">📄 Excel Hari Ini</button>
+        <button class="reload" onclick="cekBelumLengkap()" title="Lihat toko yang belum lengkap">🔎 Belum Lengkap</button>
       </div>
       <div id="errBar" style="display:none;margin:0 0 8px;"></div>
       <div id="list"><div class="loading">Memuat data...</div></div>
@@ -626,32 +628,46 @@
       setTimeout(function () { muat(true); }, 2500);
     }
     // Download database (.xls tabel rapi, kebuka di Excel) — otomatis HANYA provinsi yang login (admin = semua)
-    function unduhDatabase() {
-      var rows = DATA || [];
-      if (!rows.length) { alert('Belum ada data. Buka tab Hasil & tunggu termuat, lalu coba lagi.'); return; }
+    function tokoKurang(r){
+      var k=[];
+      if(!(r.jenisToko && String(r.jenisToko).trim())) k.push('Grade/Level');
+      if(!((r.files&&r.files.length)||r.folderMedia)) k.push('Foto/Video');
+      if(!(r.maps && String(r.maps).trim())) k.push('Maps');
+      if(r.pengambilanInfinix===''||r.pengambilanInfinix==null) k.push('Pengambilan Infinix');
+      if(r.pengambilanItel===''||r.pengambilanItel==null) k.push('Pengambilan itel');
+      return k;
+    }
+    function _hariIni(){ var d=new Date(); return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); }
+    function cekBelumLengkap(){
+      var all=DATA||[]; var bel=all.filter(function(r){return tokoKurang(r).length;});
+      var bar=document.getElementById('errBar');
+      if(!bel.length){ bar.style.display='block'; bar.innerHTML='<div style="color:#137333;font-weight:700;">✅ Semua toko sudah lengkap.</div>'; return; }
+      bar.style.display='block';
+      bar.innerHTML='<div style="background:#fff3d6;border:1px solid #f0c36b;border-radius:8px;padding:10px 12px;"><b style="color:#8a5a00;">'+bel.length+' toko BELUM lengkap (tak masuk Excel):</b><br>'+
+        bel.map(function(r){return '&bull; '+esc(r.toko)+' <span style="color:#8a5a00;">(kurang: '+tokoKurang(r).join(', ')+')</span>';}).join('<br>')+'</div>';
+    }
+    function unduhDatabase(mode) {
+      var all = DATA || [];
+      if (!all.length) { alert('Belum ada data. Buka tab Hasil & tunggu termuat, lalu coba lagi.'); return; }
+      var todayStr = _hariIni();
+      var kandidat = all.filter(function(r){ return mode!=='today' || String(r.tanggal||'').slice(0,10)===todayStr; });
+      var rows = kandidat.filter(function(r){ return tokoKurang(r).length===0; });
+      var dilewati = kandidat.length - rows.length;
+      if (!rows.length) { alert('Tidak ada toko LENGKAP'+(mode==='today'?' hari ini':'')+'. '+dilewati+' toko belum lengkap — lengkapi dulu (klik "Belum Lengkap").'); return; }
       var prov = (SESI && SESI.admin) ? 'SEMUA-PROVINSI' : (SESI && SESI.provinsi ? SESI.provinsi : 'provinsi');
       var cols = [
         ['ID', 'id'], ['Tanggal', 'tanggal'], ['Provinsi', 'provinsi'], ['Area/Kota', 'area'],
         ['Nama Toko', 'toko'], ['Level', 'jenisToko'], ['Pelapor', 'sales'], ['Sumber', 'sumber'],
-        ['Status', 'status'], ['Skor', 'skor'],
         ['Pengambilan Infinix', 'pengambilanInfinix'], ['Pengambilan itel', 'pengambilanItel'],
         ['CAPA Infinix', function (r) { return r.capaInfinix ? (r.capaInfinix.pct + '% (' + r.capaInfinix.ambil + '/' + r.capaInfinix.target + ')') : ''; }],
         ['CAPA itel', function (r) { return r.capaItel ? (r.capaItel.pct + '% (' + r.capaItel.ambil + '/' + r.capaItel.target + ')') : ''; }],
-        ['Verdict', 'skorRingkas'], ['Solusi Utama', 'ringkasan'], ['Aksi Prioritas', 'aksi'],
-        ['Gap vs Target', 'gap'], ['Kenapa Stok Begini', 'diagnosa'], ['Promotor (analisa)', 'promotorAnalisa'],
-        ['Merek Terdeteksi', 'merek'], ['Tipe / Model', 'tipe'], ['Estimasi Stok', 'stok'],
-        ['Pangsa Stok', 'pangsa'], ['Rekomendasi Penempatan', 'rekomendasi'], ['Lokasi Display', 'display'],
-        ['Branding & POSM', 'branding'], ['Layout Toko', 'layout'], ['Promotor di Toko', 'promotor'], ['Lokasi Maps', 'maps'],
-        ['Folder Foto/Video', '__files__']
+        ['Lokasi Maps', 'maps'],
+        ['Link Foto', '__linkfoto__']
       ];
       function ex2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
       function sel(r, key) {
-        if (key === '__files__') {   // kolom link: utamakan LINK FOLDER (semua media 1 toko); fallback 1 link (data lama)
-          if (r.folderMedia) return '<a href="' + String(r.folderMedia).replace(/"/g, '&quot;') + '">Buka folder media</a>';
-          var fs = r.files || [];
-          if (!fs.length) return '';
-          // Excel cuma 1 link/sel → data lama: 1 link klik ke file pertama (+ jumlah file)
-          return '<a href="' + String(fs[0]).replace(/"/g, '&quot;') + '">Buka media' + (fs.length > 1 ? (' (' + fs.length + ' file)') : '') + '</a>';
+        if (key === '__linkfoto__') {   // SEMUA link foto/video (buat dinilai Claude)
+          return (r.files || []).join(' , ');
         }
         var v = (typeof key === 'function') ? key(r) : r[key];
         return ex2(v == null ? '' : String(v).replace(/\r?\n/g, ' • '));
@@ -670,6 +686,7 @@
       a.download = 'Database_' + String(prov).replace(/[^\w]+/g, '_') + '_' + tgl + '.xls';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      var msg = rows.length + ' toko LENGKAP masuk Excel.'; if (dilewati > 0) msg += '\n' + dilewati + ' toko DILEWATI (belum lengkap) — klik "Belum Lengkap" untuk lihat.'; alert(msg);
     }
     function badge(s) {
       s = String(s || '');
