@@ -642,11 +642,12 @@
         ['Merek Terdeteksi', 'merek'], ['Tipe / Model', 'tipe'], ['Estimasi Stok', 'stok'],
         ['Pangsa Stok', 'pangsa'], ['Rekomendasi Penempatan', 'rekomendasi'], ['Lokasi Display', 'display'],
         ['Branding & POSM', 'branding'], ['Layout Toko', 'layout'], ['Promotor di Toko', 'promotor'], ['Lokasi Maps', 'maps'],
-        ['Link Foto/Video', '__files__']
+        ['Folder Foto/Video', '__files__']
       ];
       function ex2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
       function sel(r, key) {
-        if (key === '__files__') {   // kolom link foto/video: buat tautan klik ke Drive (bukan teks biasa)
+        if (key === '__files__') {   // kolom link: utamakan LINK FOLDER (semua media 1 toko); fallback ke link file satuan (data lama)
+          if (r.folderMedia) return '<a href="' + String(r.folderMedia).replace(/"/g, '&quot;') + '">Buka folder media</a>';
           var fs = r.files || [];
           if (!fs.length) return '';
           return fs.map(function (u, i) { return '<a href="' + String(u).replace(/"/g, '&quot;') + '">File ' + (i + 1) + '</a>'; }).join(' | ');
