@@ -646,11 +646,12 @@
       ];
       function ex2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
       function sel(r, key) {
-        if (key === '__files__') {   // kolom link: utamakan LINK FOLDER (semua media 1 toko); fallback ke link file satuan (data lama)
+        if (key === '__files__') {   // kolom link: utamakan LINK FOLDER (semua media 1 toko); fallback 1 link (data lama)
           if (r.folderMedia) return '<a href="' + String(r.folderMedia).replace(/"/g, '&quot;') + '">Buka folder media</a>';
           var fs = r.files || [];
           if (!fs.length) return '';
-          return fs.map(function (u, i) { return '<a href="' + String(u).replace(/"/g, '&quot;') + '">File ' + (i + 1) + '</a>'; }).join(' | ');
+          // Excel cuma 1 link/sel → data lama: 1 link klik ke file pertama (+ jumlah file)
+          return '<a href="' + String(fs[0]).replace(/"/g, '&quot;') + '">Buka media' + (fs.length > 1 ? (' (' + fs.length + ' file)') : '') + '</a>';
         }
         var v = (typeof key === 'function') ? key(r) : r[key];
         return ex2(v == null ? '' : String(v).replace(/\r?\n/g, ' • '));
