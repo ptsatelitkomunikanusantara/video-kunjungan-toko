@@ -43,6 +43,8 @@
         <button type="button" class="prole" id="btnProm" onclick="pilihPeran('Promotor')">👤 Promotor</button>
         <button type="button" class="prole" id="btnSales" onclick="pilihPeran('Sales')">🧑‍💼 Sales</button>
       </div>
+      <div class="hint" style="margin:0 0 4px;">⚠️ Khusus <b>Sales SKN</b>: pakai link Sales SKN, jangan halaman ini —
+      nanti perannya tercatat salah.</div>
 
       <form id="f" onsubmit="return false;" style="display:none;">
         <label>Tanggal <span class="req">*</span></label>
@@ -119,7 +121,8 @@
     var VIDEO = null, FOTOS = [], SAVED_ID = null;
 
     function pilihPeran(p) {
-      PERAN = p;
+      PERAN = p;   // 'Promotor' atau 'Sales'. Yang lewat halaman ini pasti BUKAN sales SKN
+                   // (sales SKN punya link sendiri), jadi Code.gs menyimpannya sbg "Sales Principal".
       document.getElementById('btnProm').className = 'prole' + (p === 'Promotor' ? ' on' : '');
       document.getElementById('btnSales').className = 'prole' + (p === 'Sales' ? ' on' : '');
       document.getElementById('f').style.display = 'block';
