@@ -13,8 +13,8 @@
     * { box-sizing: border-box; }
     body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #1f2933; margin: 0; padding: 16px; }
     .wrap { max-width: 620px; margin: 0 auto; }
-    .nav { display: flex; gap: 8px; margin-bottom: 14px; }
-    .nav button { flex: 1; padding: 11px; border: 1px solid #cbd2d9; background: #fff; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; color: #51606e; }
+    .nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .nav button { flex: 1 1 30%; min-width: 92px; padding: 10px 6px; border: 1px solid #cbd2d9; background: #fff; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; color: #51606e; }
     .nav button.on { background: #0b3d91; color: #fff; border-color: #0b3d91; }
     .card { background: #fff; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.08); padding: 22px; }
     h1 { font-size: 20px; margin: 0 0 2px; color: #0b3d91; }
@@ -64,6 +64,23 @@
     .dl { background: #0b3d91; color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .dl:disabled { background: #9aa5b1; cursor: not-allowed; }
     .empty, .loading { text-align: center; color: #9aa5b1; padding: 40px 0; }
+    /* ===== Perbandingan Antar Periode ===== */
+    .cmpbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+    .cmpbar select { flex: 1 1 45%; min-width: 145px; padding: 9px 10px; font-size: 13px; }
+    .cmpcust { display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .cmpcust > div { flex: 1 1 46%; min-width: 150px; }
+    .cmpcust input { padding: 8px 9px; font-size: 13px; }
+    .ctab { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .ctab th { text-align: left; font-size: 11px; color: #6b7280; font-weight: 700; padding: 6px 6px; border-bottom: 1px solid #e6ebf2; white-space: nowrap; }
+    .ctab td { font-size: 13px; padding: 7px 6px; border-top: 1px solid #eef1f4; white-space: nowrap; }
+    .ctab tr.tot td { background: #f0f5ff; }
+    .ctab td.gr { white-space: normal; font-weight: 700; min-width: 108px; }
+    .g { color: #1a7f37; font-weight: 700; }
+    .r { color: #c02b2b; font-weight: 700; }
+    .nn { color: #9aa5b1; }
+    .kecil { font-size: 11px; color: #9aa5b1; font-weight: 400; }
+    .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .narasi { background: #f7f9fc; border: 1px solid #e6ebf2; border-radius: 9px; padding: 11px 13px; font-size: 12.5px; line-height: 1.65; white-space: pre-wrap; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -91,6 +108,7 @@
       <button id="navPend" onclick="tab('pend')">📥 Bantu Upload</button>
       <button id="navHs" onclick="tab('hs')">📋 Hasil</button>
       <button id="navSum" onclick="tab('sum')">📊 Ringkasan</button>
+      <button id="navCmp" onclick="tab('cmp')">⚖️ Banding</button>
       <button id="navMap" onclick="tab('map')">🗺️ Peta</button>
     </div>
 
@@ -126,6 +144,43 @@
     <div id="viewSum" style="display:none;">
       <div class="topbar"><h1>📊 Ringkasan</h1><button class="reload" onclick="muatSum()">↻</button></div>
       <div id="sumbox"><div class="loading">Memuat data...</div></div>
+    </div>
+
+    <!-- ===== PERBANDINGAN ANTAR PERIODE ===== -->
+    <div id="viewCmp" style="display:none;">
+      <div class="topbar"><h1>⚖️ Perbandingan Periode</h1><button class="reload" onclick="muatCmp()">↻</button></div>
+      <p class="sub">Bandingkan hasil kunjungan antar periode — per provinsi, area, level toko, atau sales. Tidak tergantung nama toko, jadi tetap akurat walau nama toko diketik beda-beda.</p>
+      <div class="cmpbar">
+        <select id="cmpMode" onchange="gantiMode()">
+          <option value="bulan">Bulan ini vs Bulan lalu</option>
+          <option value="minggu">Minggu ini vs Minggu lalu</option>
+          <option value="custom">Pilih tanggal sendiri...</option>
+        </select>
+        <select id="cmpBy" onchange="renderCmp()">
+          <option value="provinsi">Kelompokkan: Provinsi</option>
+          <option value="area">Kelompokkan: Area/Kota</option>
+          <option value="level">Kelompokkan: Level Toko</option>
+          <option value="sales">Kelompokkan: Sales</option>
+        </select>
+        <select id="cmpPeran" onchange="renderCmp()">
+          <option value="">Pelapor: semua</option>
+          <option value="Sales SKN">Pelapor: Sales SKN saja</option>
+          <option value="Sales Principal">Pelapor: Sales Principal saja</option>
+          <option value="Promotor">Pelapor: Promotor saja</option>
+          <option value="Sales">Pelapor: belum berlabel (data lama)</option>
+        </select>
+      </div>
+      <div class="cmpcust" id="cmpCust">
+        <div><label style="margin:6px 0 3px;">Periode KINI</label>
+          <div style="display:flex;gap:6px;"><input type="date" id="cmpA1" onchange="renderCmp()"><input type="date" id="cmpA2" onchange="renderCmp()"></div></div>
+        <div><label style="margin:6px 0 3px;">Periode PEMBANDING</label>
+          <div style="display:flex;gap:6px;"><input type="date" id="cmpB1" onchange="renderCmp()"><input type="date" id="cmpB2" onchange="renderCmp()"></div></div>
+      </div>
+      <div class="barr" style="margin-top:10px;">
+        <button class="reload" onclick="salinNarasi()" title="Salin ringkasan untuk dikirim ke WA/grup">📋 Salin Ringkasan</button>
+        <button class="reload" onclick="unduhBanding()" title="Unduh tabel perbandingan ke Excel">📄 Excel Perbandingan</button>
+      </div>
+      <div id="cmpbox"><div class="loading">Memuat data...</div></div>
     </div>
 
     <!-- ===== PETA SEBARAN TOKO ===== -->
@@ -196,16 +251,19 @@
       document.getElementById('viewPend').style.display = (t === 'pend') ? 'block' : 'none';
       document.getElementById('viewHs').style.display = (t === 'hs') ? 'block' : 'none';
       document.getElementById('viewSum').style.display = (t === 'sum') ? 'block' : 'none';
+      document.getElementById('viewCmp').style.display = (t === 'cmp') ? 'block' : 'none';
       document.getElementById('viewMap').style.display = (t === 'map') ? 'block' : 'none';
       document.getElementById('navCek').className = (t === 'cek') ? 'on' : '';
       document.getElementById('navPend').className = (t === 'pend') ? 'on' : '';
       document.getElementById('navHs').className = (t === 'hs') ? 'on' : '';
       document.getElementById('navSum').className = (t === 'sum') ? 'on' : '';
+      document.getElementById('navCmp').className = (t === 'cmp') ? 'on' : '';
       document.getElementById('navMap').className = (t === 'map') ? 'on' : '';
       if (t === 'cek') muatCek();
       if (t === 'pend') muatPending();
       if (t === 'hs' && !DATA.length) muat();
       if (t === 'sum') muatSum();
+      if (t === 'cmp') muatCmp();
       if (t === 'map') muatMap();
     }
 
@@ -474,7 +532,16 @@
       } catch (e) { document.getElementById('sumbox').innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
     }
     function avgOf(arr) { if (!arr.length) return null; var s = 0; for (var i = 0; i < arr.length; i++) s += arr[i]; return Math.round(s / arr.length); }
-    function numSkor(r) { return (r.skor !== '' && r.skor != null && !isNaN(Number(r.skor))) ? Number(r.skor) : null; }
+    function numSkorMentah(r) { return (r.skor !== '' && r.skor != null && !isNaN(Number(r.skor))) ? Number(r.skor) : null; }
+    // Skor 0 yang muncul karena analisa GAGAL (foto bukan toko / tak terbaca) BUKAN "toko jelek".
+    // Ciri: skor 0 dan tidak ada satu pun merek terdeteksi. Baris begini tak boleh ikut dirata-rata,
+    // dan tak boleh nongol di daftar "prioritas skor terendah".
+    function analisaGagal(r) {
+      if (numSkorMentah(r) !== 0) return false;
+      var mk = String(r.merek || '').toLowerCase();
+      return !mk.replace(/\s/g, '') || mk.indexOf('tidak ada merek') > -1;
+    }
+    function numSkor(r) { return analisaGagal(r) ? null : numSkorMentah(r); }
     function warnaSkor(n) { return n == null ? '#6b7280' : (n >= 70 ? '#1a7f37' : (n >= 40 ? '#b7791f' : '#c02b2b')); }
     function tile(label, val, warna) {
       return '<div style="flex:1;min-width:120px;background:#fff;border-radius:11px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:12px 14px;">' +
@@ -556,6 +623,245 @@
         '<div class="sec">📍 Per Area</div>' + tabelGrup('Area', grup(function (r) { return r.area; }, done), true) +
         '<div class="sec">🏷️ Per Level Toko</div>' + tabelGrup('Level', grup(function (r) { return r.jenisToko; }, done), true) +
         '<div class="sec">🧑‍💼 Per Sales</div>' + tabelGrup('Sales', grup(function (r) { return r.sales; }, done), false);
+    }
+
+    // ========== PERBANDINGAN ANTAR PERIODE ==========
+    // Membandingkan AGREGAT (provinsi/area/level/sales) antara 2 rentang tanggal.
+    // TIDAK butuh identitas toko — nama toko boleh diketik beda tiap kunjungan, hasilnya tetap benar.
+    var BULAN_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    var CMP = null;   // hasil hitungan terakhir (dipakai tombol Salin & Excel)
+
+    function tglObj(s) {                       // "dd/mm/yyyy" -> Date
+      var t = String(s || '').slice(0, 10).split('/');
+      if (t.length !== 3) return null;
+      var d = new Date(Number(t[2]), Number(t[1]) - 1, Number(t[0]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function hariAwal(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    function fmtT(d) { return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+    function gantiMode() {
+      document.getElementById('cmpCust').style.display = (document.getElementById('cmpMode').value === 'custom') ? 'flex' : 'none';
+      renderCmp();
+    }
+    function rentang() {
+      var mode = document.getElementById('cmpMode').value;
+      var now = hariAwal(new Date()), a1, a2, b1, b2;
+      if (mode === 'bulan') {
+        a1 = new Date(now.getFullYear(), now.getMonth(), 1); a2 = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        b1 = new Date(now.getFullYear(), now.getMonth() - 1, 1); b2 = new Date(now.getFullYear(), now.getMonth(), 0);
+        return { kini: { d1: a1, d2: a2, lbl: BULAN_ID[a1.getMonth()] + ' ' + a1.getFullYear() },
+                 lalu: { d1: b1, d2: b2, lbl: BULAN_ID[b1.getMonth()] + ' ' + b1.getFullYear() } };
+      }
+      if (mode === 'minggu') {
+        var dow = (now.getDay() + 6) % 7;      // Senin = 0
+        a1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+        a2 = new Date(a1.getFullYear(), a1.getMonth(), a1.getDate() + 6);
+        b1 = new Date(a1.getFullYear(), a1.getMonth(), a1.getDate() - 7);
+        b2 = new Date(a1.getFullYear(), a1.getMonth(), a1.getDate() - 1);
+        return { kini: { d1: a1, d2: a2, lbl: 'Minggu ini (' + fmtT(a1) + '–' + fmtT(a2) + ')' },
+                 lalu: { d1: b1, d2: b2, lbl: 'Minggu lalu (' + fmtT(b1) + '–' + fmtT(b2) + ')' } };
+      }
+      function v(id) { var x = document.getElementById(id).value; if (!x) return null; var p = x.split('-'); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }
+      a1 = v('cmpA1'); a2 = v('cmpA2'); b1 = v('cmpB1'); b2 = v('cmpB2');
+      if (!a1 || !a2 || !b1 || !b2) return null;
+      return { kini: { d1: a1, d2: a2, lbl: fmtT(a1) + '–' + fmtT(a2) }, lalu: { d1: b1, d2: b2, lbl: fmtT(b1) + '–' + fmtT(b2) } };
+    }
+    function dalamPeriode(r, p) { var d = tglObj(r.tanggal); return !!(d && d >= p.d1 && d <= p.d2); }
+    function rata(a) { if (!a.length) return null; var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return Math.round(s / a.length); }
+
+    function metrik(rows) {
+      var sk = [], ci = [], ct = [], itelIsi = 0, itelNol = 0, mrkIsi = 0, mrkInf = 0, gagal = 0;
+      rows.forEach(function (r) {
+        if (analisaGagal(r)) gagal++;
+        var n = numSkor(r); if (n != null) sk.push(n);
+        if (r.capaInfinix && r.capaInfinix.pct != null && !isNaN(Number(r.capaInfinix.pct))) ci.push(Number(r.capaInfinix.pct));
+        if (r.capaItel && r.capaItel.pct != null && !isNaN(Number(r.capaItel.pct))) ct.push(Number(r.capaItel.pct));
+        var pi = r.pengambilanItel;
+        if (pi !== '' && pi != null && !isNaN(Number(pi))) { itelIsi++; if (Number(pi) === 0) itelNol++; }
+        var mk = String(r.merek || '').toLowerCase();
+        if (mk.replace(/\s/g, '')) { mrkIsi++; if (mk.indexOf('infinix') > -1) mrkInf++; }
+      });
+      return { n: rows.length, nSkor: sk.length, gagal: gagal, skor: rata(sk), capaI: rata(ci), capaT: rata(ct),
+               itelNol: itelIsi ? Math.round(itelNol * 100 / itelIsi) : null, itelIsi: itelIsi,
+               pajangInf: mrkIsi ? Math.round(mrkInf * 100 / mrkIsi) : null, mrkIsi: mrkIsi };
+    }
+    // sel "lalu -> kini (delta)". turunBagus = true untuk angka yang bagus kalau MENGECIL (mis. % itel nol)
+    function selD(a, b, suf, turunBagus) {
+      suf = suf || '';
+      if (a == null && b == null) return '<span class="nn">-</span>';
+      if (b == null) return '<b>' + a + suf + '</b> <span class="kecil">baru</span>';
+      if (a == null) return '<span class="nn">' + b + suf + ' → -</span>';
+      var d = a - b;
+      var cls = d === 0 ? 'nn' : ((turunBagus ? d < 0 : d > 0) ? 'g' : 'r');
+      var ar = d === 0 ? '=' : (d > 0 ? '▲ +' + d : '▼ ' + d);
+      return '<span class="nn">' + b + suf + '</span> → <b>' + a + suf + '</b> <span class="' + cls + '">' + ar + '</span>';
+    }
+    function labelBy() {
+      var by = document.getElementById('cmpBy').value;
+      return by === 'provinsi' ? 'Provinsi' : by === 'area' ? 'Area/Kota' : by === 'level' ? 'Level' : 'Sales';
+    }
+    function nilaiGrup(r, by) {
+      var v = by === 'provinsi' ? r.provinsi : by === 'area' ? r.area : by === 'level' ? r.jenisToko : r.sales;
+      return String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    }
+
+    async function muatCmp() {
+      var box = document.getElementById('cmpbox');
+      box.innerHTML = '<div class="loading">Memuat data...</div>';
+      try { if (!DATA.length) { DATA = await ambilData_(); buildTren(); } renderCmp(); }
+      catch (e) { box.innerHTML = '<div class="empty">Gagal memuat: ' + e.message + '</div>'; }
+    }
+
+    function renderCmp() {
+      var box = document.getElementById('cmpbox');
+      if (!box) return;
+      var p = rentang();
+      if (!p) { box.innerHTML = '<div class="empty">Isi keempat tanggal dulu.</div>'; return; }
+      var by = document.getElementById('cmpBy').value;
+      var peran = document.getElementById('cmpPeran').value;
+      var all = (DATA || []).filter(function (r) { return r.status !== 'Menunggu Media'; });
+      // saring per peran pelapor: kunjungan sales principal / promotor jangan dicampur
+      // ke dalam penilaian kinerja sales SKN.
+      if (peran) all = all.filter(function (r) { return String(r.sumber || 'Sales') === peran; });
+      var kini = all.filter(function (r) { return dalamPeriode(r, p.kini); });
+      var lalu = all.filter(function (r) { return dalamPeriode(r, p.lalu); });
+
+      if (!kini.length && !lalu.length) {
+        box.innerHTML = '<div class="empty">Tidak ada kunjungan di kedua periode ini' + (peran ? ' untuk pelapor "' + esc(peran) + '"' : '') +
+          '.<br><span class="kecil">Coba pilih "Pilih tanggal sendiri" dan mundurkan rentangnya' + (peran ? ', atau kembalikan pelapor ke "semua"' : '') + '.</span></div>';
+        CMP = null; return;
+      }
+      var mk = metrik(kini), ml = metrik(lalu);
+
+      // --- kartu ringkas ---
+      function tile2(label, a, b, suf, turunBagus, dasar) {
+        return '<div style="flex:1;min-width:140px;background:#fff;border-radius:11px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:11px 13px;">' +
+          '<div style="font-size:11px;color:#6b7280;">' + label + '</div>' +
+          '<div style="font-size:15px;margin-top:4px;">' + selD(a, b, suf, turunBagus) + '</div>' +
+          (dasar ? '<div class="kecil">' + dasar + '</div>' : '') + '</div>';
+      }
+      var tiles = '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:8px 0 2px;">' +
+        tile2('Jumlah kunjungan', mk.n, ml.n, '', false) +
+        tile2('Rata skor toko', mk.skor, ml.skor, '', false, 'dari ' + mk.nSkor + ' toko berskor') +
+        tile2('Rata CAPA Infinix', mk.capaI, ml.capaI, '%', false) +
+        tile2('Rata CAPA itel', mk.capaT, ml.capaT, '%', false) +
+        tile2('Toko dgn itel NOL', mk.itelNol, ml.itelNol, '%', true, 'dari ' + mk.itelIsi + ' toko berdata') +
+        tile2('Toko pajang Infinix', mk.pajangInf, ml.pajangInf, '%', false, 'dari ' + mk.mrkIsi + ' toko teranalisa') +
+        '</div>';
+
+      // --- tabel per grup ---
+      var keys = {}, urut = [];
+      function daftar(rows, sisi) {
+        rows.forEach(function (r) {
+          var v = nilaiGrup(r, by), k = v.toLowerCase() || '(kosong)';
+          if (!keys[k]) { keys[k] = { label: v || '(kosong)', kini: [], lalu: [] }; urut.push(k); }
+          keys[k][sisi].push(r);
+        });
+      }
+      daftar(kini, 'kini'); daftar(lalu, 'lalu');
+
+      var baris = urut.map(function (k) {
+        var o = keys[k], a = metrik(o.kini), b = metrik(o.lalu);
+        var dSkor = (a.skor != null && b.skor != null) ? (a.skor - b.skor) : null;
+        return { k: k, label: o.label, a: a, b: b, dSkor: dSkor };
+      });
+      // paling MENURUN di atas (yang perlu ditindak), lalu yang tanpa pembanding, lalu terbanyak kunjungan
+      baris.sort(function (x, y) {
+        if (x.dSkor == null && y.dSkor == null) return y.a.n - x.a.n;
+        if (x.dSkor == null) return 1;
+        if (y.dSkor == null) return -1;
+        return x.dSkor - y.dSkor;
+      });
+
+      var head = '<tr><th>' + labelBy() + '</th><th>Kunjungan</th><th>Rata Skor</th><th>CAPA Infinix</th><th>CAPA itel</th><th>Toko itel NOL</th></tr>';
+      var body = baris.map(function (o) {
+        var kecil = (o.a.n && o.b.n && (o.a.n < 3 || o.b.n < 3)) ? ' <span class="kecil" title="sampel kecil, angka mudah berayun">⚠ sampel kecil</span>' : '';
+        return '<tr>' +
+          '<td class="gr">' + esc(o.label) + kecil + '<div class="kecil">' + o.b.n + ' → ' + o.a.n + ' kunjungan • skor terisi ' + o.a.nSkor + '/' + o.a.n + '</div></td>' +
+          '<td>' + selD(o.a.n, o.b.n, '', false) + '</td>' +
+          '<td>' + selD(o.a.skor, o.b.skor, '', false) + '</td>' +
+          '<td>' + selD(o.a.capaI, o.b.capaI, '%', false) + '</td>' +
+          '<td>' + selD(o.a.capaT, o.b.capaT, '%', false) + '</td>' +
+          '<td>' + selD(o.a.itelNol, o.b.itelNol, '%', true) + '</td>' +
+          '</tr>';
+      }).join('');
+      var totRow = '<tr class="tot"><td class="gr">TOTAL</td><td>' + selD(mk.n, ml.n, '', false) + '</td><td>' + selD(mk.skor, ml.skor, '', false) +
+        '</td><td>' + selD(mk.capaI, ml.capaI, '%', false) + '</td><td>' + selD(mk.capaT, ml.capaT, '%', false) + '</td><td>' + selD(mk.itelNol, ml.itelNol, '%', true) + '</td></tr>';
+
+      // --- narasi siap kirim WA ---
+      var naik = baris.filter(function (o) { return o.dSkor != null && o.dSkor > 0; }).sort(function (x, y) { return y.dSkor - x.dSkor; }).slice(0, 3);
+      var turun = baris.filter(function (o) { return o.dSkor != null && o.dSkor < 0; }).sort(function (x, y) { return x.dSkor - y.dSkor; }).slice(0, 3);
+      function grsD(a, b, suf) { if (a == null || b == null) return (a == null ? '-' : a + (suf || '')); var d = a - b; return b + (suf || '') + ' → ' + a + (suf || '') + ' (' + (d > 0 ? '+' + d : d) + ')'; }
+      var teks = '📊 PERBANDINGAN KUNJUNGAN TOKO\n' + p.kini.lbl + '  vs  ' + p.lalu.lbl + '\n' +
+        (SESI && SESI.admin ? 'Cakupan: semua provinsi' : 'Provinsi: ' + (SESI ? SESI.provinsi : '-')) +
+        (peran ? '\nPelapor: ' + peran + ' saja' : '') + '\n' +
+        '\n• Kunjungan: ' + grsD(mk.n, ml.n) +
+        '\n• Rata skor: ' + grsD(mk.skor, ml.skor) +
+        '\n• CAPA Infinix: ' + grsD(mk.capaI, ml.capaI, '%') +
+        '\n• CAPA itel: ' + grsD(mk.capaT, ml.capaT, '%') +
+        '\n• Toko dgn itel NOL: ' + grsD(mk.itelNol, ml.itelNol, '%') + ' (dari ' + mk.itelIsi + ' toko berdata)' +
+        (naik.length ? '\n\n⬆️ Membaik:\n' + naik.map(function (o) { return '  • ' + o.label + ' ' + o.b.skor + '→' + o.a.skor + ' (+' + o.dSkor + ', ' + o.a.n + ' toko)'; }).join('\n') : '') +
+        (turun.length ? '\n\n⬇️ Menurun:\n' + turun.map(function (o) { return '  • ' + o.label + ' ' + o.b.skor + '→' + o.a.skor + ' (' + o.dSkor + ', ' + o.a.n + ' toko)'; }).join('\n') : '') +
+        '\n\n⚠️ Skor terisi ' + mk.nSkor + ' dari ' + mk.n + ' kunjungan periode ini.';
+
+      CMP = { p: p, by: by, baris: baris, mk: mk, ml: ml, teks: teks };
+
+      box.innerHTML =
+        '<div class="sec">' + esc(p.kini.lbl) + ' &nbsp;vs&nbsp; ' + esc(p.lalu.lbl) + '</div>' + tiles +
+        '<div class="hint">Angka kiri = periode pembanding, kanan = periode kini. Hijau = membaik, merah = memburuk. Laporan yang medianya belum masuk (“Menunggu Media”) tidak ikut dihitung.</div>' +
+        '<div class="sec">Rincian per ' + labelBy() + ' <span class="kecil">(paling menurun di atas — geser tabel ke kanan untuk kolom lainnya)</span></div>' +
+        '<div class="scroll"><table class="ctab"><thead>' + head + '</thead><tbody>' + totRow + body + '</tbody></table></div>' +
+        (mk.nSkor < mk.n ? '<div class="hint" style="color:#b7791f;margin-top:10px;">⚠️ ' + (mk.n - mk.nSkor) + ' dari ' + mk.n + ' kunjungan periode ini belum punya skor terpakai (status Error / belum dinilai' +
+          (mk.gagal ? ', termasuk ' + mk.gagal + ' analisa GAGAL berskor 0 — foto bukan toko/tak terbaca, sengaja tidak ikut dirata-rata' : '') +
+          ') — rata-rata skor dihitung hanya dari yang sudah ada nilainya.</div>' : '') +
+        '<div class="sec">Ringkasan siap kirim</div><div class="narasi" id="cmpNarasi">' + esc(teks) + '</div>';
+    }
+
+    function salinNarasi() {
+      if (!CMP) { alert('Belum ada hasil perbandingan.'); return; }
+      var t = CMP.teks;
+      function jadi() { alert('✅ Ringkasan tersalin — tinggal tempel di WhatsApp/grup.'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(jadi, gagal); }
+      else gagal();
+      function gagal() {
+        var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); jadi(); } catch (e) { alert('Salin manual dari kotak Ringkasan di bawah.'); }
+        ta.remove();
+      }
+    }
+
+    function unduhBanding() {
+      if (!CMP || !CMP.baris.length) { alert('Belum ada hasil perbandingan.'); return; }
+      function ex2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+      function pair(a, b, suf) { suf = suf || ''; return [(b == null ? '' : b + suf), (a == null ? '' : a + suf), (a == null || b == null ? '' : (a - b > 0 ? '+' : '') + (a - b) + suf)]; }
+      var L = CMP.p.lalu.lbl, K = CMP.p.kini.lbl;
+      var head = [labelBy(),
+        'Kunjungan ' + L, 'Kunjungan ' + K, 'Δ Kunjungan',
+        'Rata Skor ' + L, 'Rata Skor ' + K, 'Δ Skor',
+        'CAPA Infinix ' + L, 'CAPA Infinix ' + K, 'Δ CAPA Infinix',
+        'CAPA itel ' + L, 'CAPA itel ' + K, 'Δ CAPA itel',
+        'Toko itel NOL ' + L, 'Toko itel NOL ' + K, 'Δ itel NOL',
+        'Skor terisi ' + K];
+      var isi = CMP.baris.map(function (o) {
+        return [o.label].concat(pair(o.a.n, o.b.n), pair(o.a.skor, o.b.skor), pair(o.a.capaI, o.b.capaI, '%'),
+          pair(o.a.capaT, o.b.capaT, '%'), pair(o.a.itelNol, o.b.itelNol, '%'), [o.a.nSkor + '/' + o.a.n]);
+      });
+      var m = CMP.mk, l = CMP.ml;
+      isi.unshift(['TOTAL'].concat(pair(m.n, l.n), pair(m.skor, l.skor), pair(m.capaI, l.capaI, '%'),
+        pair(m.capaT, l.capaT, '%'), pair(m.itelNol, l.itelNol, '%'), [m.nSkor + '/' + m.n]));
+      var thead = '<tr>' + head.map(function (h) { return '<th>' + ex2(h) + '</th>'; }).join('') + '</tr>';
+      var tbody = isi.map(function (b) { return '<tr>' + b.map(function (c) { return '<td>' + ex2(c) + '</td>'; }).join('') + '</tr>'; }).join('');
+      var prov = (SESI && SESI.admin) ? 'SEMUA-PROVINSI' : (SESI && SESI.provinsi ? SESI.provinsi : 'provinsi');
+      var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">' +
+        '<style>table{border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11px;}' +
+        'th{background:#0b3d91;color:#fff;font-weight:bold;border:1px solid #7f8c9b;padding:5px 8px;text-align:left;white-space:nowrap;}' +
+        'td{border:1px solid #cbd2d9;padding:3px 8px;mso-number-format:"\\@";}</style></head>' +
+        '<body><h3>Perbandingan Kunjungan Toko — ' + ex2(K) + ' vs ' + ex2(L) + ' (' + ex2(prov) + ')</h3>' +
+        '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></body></html>';
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' }));
+      a.download = 'Perbandingan_' + String(prov).replace(/[^\w]+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.xls';
+      document.body.appendChild(a); a.click(); a.remove();
     }
 
     // ========== PETA SEBARAN TOKO (Leaflet + OpenStreetMap, gratis) ==========
@@ -793,10 +1099,18 @@
       var c = n >= 70 ? '#1a7f37' : (n >= 40 ? '#b7791f' : '#c02b2b');
       return '<span title="Skor Toko" style="background:' + c + ';color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:11px;margin-right:6px;white-space:nowrap;">' + esc(r.skor) + '</span>';
     }
+    // Peran pelapor. Nilai baru: 'Sales SKN' (dari link sales), 'Sales Principal' & 'Promotor'
+    // (dari link bersama, dipilih sendiri). Nilai lama 'Sales' = belum jelas -> tak diberi label.
     function sumberTag(r) {
-      return r.sumber === 'Promotor'
-        ? '<span title="Data dari promotor" style="font-size:10px;font-weight:700;color:#7c3aed;background:#f3e8ff;padding:2px 7px;border-radius:6px;margin-left:4px;vertical-align:middle;">👤 Promotor</span>'
-        : '';
+      var s = String(r.sumber || '');
+      function tag(warna, latar, teks, judul) {
+        return '<span title="' + judul + '" style="font-size:10px;font-weight:700;color:' + warna + ';background:' + latar +
+          ';padding:2px 7px;border-radius:6px;margin-left:4px;vertical-align:middle;white-space:nowrap;">' + teks + '</span>';
+      }
+      if (s === 'Promotor') return tag('#7c3aed', '#f3e8ff', '👤 Promotor', 'Data dari promotor');
+      if (s === 'Sales Principal') return tag('#b45309', '#fef3c7', '🏭 Sales Principal', 'Data dari sales principal (bukan sales SKN)');
+      if (s === 'Sales SKN') return tag('#0b3d91', '#e8edf9', '🧑‍💼 Sales SKN', 'Data dari sales SKN');
+      return '';
     }
     function pengInput(r) {
       if (r.sumber === 'Promotor') return '';   // pengambilan hanya utk kunjungan sales
