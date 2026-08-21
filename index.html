@@ -134,8 +134,31 @@
         <button class="reload" onclick="muat()">↻</button>
         <button class="reload" onclick="unduhDatabase('all')" title="Excel semua toko LENGKAP di areamu">📄 Excel Semua</button>
         <button class="reload" onclick="unduhDatabase('today')" title="Excel toko LENGKAP hari ini">📄 Excel Hari Ini</button>
+        <button class="reload" onclick="togglePilihTgl()" title="Excel untuk tanggal tertentu / rentang tanggal">📅 Excel Pilih Tanggal</button>
         <button class="reload" onclick="cekBelumLengkap()" title="Lihat toko yang belum lengkap">🔎 Belum Lengkap</button>
       </div>
+
+      <!-- ===== Excel: pilih tanggal / rentang tanggal ===== -->
+      <div id="boxTgl" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:0 0 8px;">
+        <div style="font-weight:700;color:#0b3d91;font-size:13px;margin-bottom:8px;">📅 Excel Tanggal Tertentu</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:12px;color:#51606e;font-weight:600;">Dari</label>
+          <input type="date" id="tglDari" onchange="hitungRentang()" style="padding:8px;border:1px solid #cbd2d9;border-radius:7px;font-size:14px;">
+          <label style="font-size:12px;color:#51606e;font-weight:600;">Sampai</label>
+          <input type="date" id="tglSampai" onchange="hitungRentang()" style="padding:8px;border:1px solid #cbd2d9;border-radius:7px;font-size:14px;">
+        </div>
+        <div class="hint" style="margin-top:6px;">Mau 1 tanggal saja? Isi <b>Dari</b> dan <b>Sampai</b> dengan tanggal yang sama.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+          <button class="reload" onclick="setRentang('today')">Hari Ini</button>
+          <button class="reload" onclick="setRentang('kemarin')">Kemarin</button>
+          <button class="reload" onclick="setRentang('7')">7 Hari Terakhir</button>
+          <button class="reload" onclick="setRentang('bulanini')">Bulan Ini</button>
+          <button class="reload" onclick="setRentang('bulanlalu')">Bulan Lalu</button>
+        </div>
+        <div id="tglInfo" class="hint" style="margin-top:8px;"></div>
+        <button class="dl" style="margin-top:8px;" onclick="unduhRentang()">⬇️ Download Excel Rentang Ini</button>
+      </div>
+
       <div id="errBar" style="display:none;margin:0 0 8px;"></div>
       <div id="list"><div class="loading">Memuat data...</div></div>
     </div>
@@ -965,14 +988,68 @@
       bar.innerHTML='<div style="background:#fff3d6;border:1px solid #f0c36b;border-radius:8px;padding:10px 12px;"><b style="color:#8a5a00;">'+bel.length+' toko BELUM lengkap (tak masuk Excel):</b><br>'+
         bel.map(function(r){return '&bull; '+esc(r.toko)+' <span style="color:#8a5a00;">(kurang: '+tokoKurang(r).join(', ')+')</span>';}).join('<br>')+'</div>';
     }
-    function unduhDatabase(mode) {
+    // ===== Excel: pilih tanggal / rentang tanggal =====
+    // Ubah tanggal bentuk apa pun jadi angka yyyymmdd biar gampang dibandingkan. 0 = tak terbaca.
+    function tglNum_(s) {
+      if (s == null || s === '') return 0;
+      if (s instanceof Date) return s.getFullYear() * 10000 + (s.getMonth() + 1) * 100 + s.getDate();
+      var t = String(s).trim(), m;
+      m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);          // 13/08/2026
+      if (m) return Number(m[3]) * 10000 + Number(m[2]) * 100 + Number(m[1]);
+      m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);                       // 2026-08-13
+      if (m) return Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]);
+      var d = new Date(t);
+      return isNaN(d.getTime()) ? 0 : (d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate());
+    }
+    function _iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    function togglePilihTgl() {
+      var p = document.getElementById('boxTgl');
+      var buka = (p.style.display === 'none' || !p.style.display);
+      p.style.display = buka ? 'block' : 'none';
+      if (buka) { if (!document.getElementById('tglDari').value) setRentang('today'); else hitungRentang(); }
+    }
+    function setRentang(k) {
+      var kini = new Date(), a = new Date(), b = new Date();
+      if (k === 'kemarin') { a.setDate(kini.getDate() - 1); b.setDate(kini.getDate() - 1); }
+      else if (k === '7') { a.setDate(kini.getDate() - 6); }
+      else if (k === 'bulanini') { a = new Date(kini.getFullYear(), kini.getMonth(), 1); }
+      else if (k === 'bulanlalu') { a = new Date(kini.getFullYear(), kini.getMonth() - 1, 1); b = new Date(kini.getFullYear(), kini.getMonth(), 0); }
+      document.getElementById('tglDari').value = _iso(a);
+      document.getElementById('tglSampai').value = _iso(b);
+      hitungRentang();
+    }
+    function hitungRentang() {
+      var info = document.getElementById('tglInfo'); if (!info) return;
+      var d1 = tglNum_(document.getElementById('tglDari').value);
+      var d2 = tglNum_(document.getElementById('tglSampai').value);
+      if (!d1 || !d2) { info.textContent = 'Pilih tanggal Dari dan Sampai dulu.'; return; }
+      if (d1 > d2) { info.innerHTML = '<span style="color:#c02b2b;font-weight:700;">⚠️ Tanggal "Dari" melebihi "Sampai".</span>'; return; }
+      var kand = (DATA || []).filter(function (r) { var n = tglNum_(r.tanggal); return n >= d1 && n <= d2; });
+      var lengkap = kand.filter(function (r) { return tokoKurang(r).length === 0; });
+      var kurang = kand.length - lengkap.length;
+      info.innerHTML = kand.length + ' laporan di rentang ini — <b style="color:#137333;">' + lengkap.length + ' lengkap</b> (masuk Excel)' +
+        (kurang ? ', <b style="color:#8a5a00;">' + kurang + ' dilewati</b> (belum lengkap)' : '') + '.';
+    }
+    function unduhRentang() {
+      var v1 = document.getElementById('tglDari').value, v2 = document.getElementById('tglSampai').value;
+      if (!v1 || !v2) { alert('Isi dulu tanggal Dari dan Sampai.'); return; }
+      if (tglNum_(v1) > tglNum_(v2)) { alert('Tanggal "Dari" tidak boleh melebihi "Sampai".'); return; }
+      unduhDatabase('range', v1, v2);
+    }
+    function unduhDatabase(mode, dari, sampai) {
       var all = DATA || [];
       if (!all.length) { alert('Belum ada data. Buka tab Hasil & tunggu termuat, lalu coba lagi.'); return; }
       var todayStr = _hariIni();
-      var kandidat = all.filter(function(r){ return mode!=='today' || String(r.tanggal||'').slice(0,10)===todayStr; });
+      var rDari = tglNum_(dari), rSampai = tglNum_(sampai);
+      var kandidat = all.filter(function(r){
+        if (mode === 'today') return String(r.tanggal||'').slice(0,10) === todayStr;
+        if (mode === 'range') { var n = tglNum_(r.tanggal); return n >= rDari && n <= rSampai; }
+        return true;
+      });
       var rows = kandidat.filter(function(r){ return tokoKurang(r).length===0; });
       var dilewati = kandidat.length - rows.length;
-      if (!rows.length) { alert('Tidak ada toko LENGKAP'+(mode==='today'?' hari ini':'')+'. '+dilewati+' toko belum lengkap — lengkapi dulu (klik "Belum Lengkap").'); return; }
+      var ket = mode==='today' ? ' hari ini' : (mode==='range' ? (dari===sampai ? ' pada tanggal ' + dari : ' pada rentang ' + dari + ' s/d ' + sampai) : '');
+      if (!rows.length) { alert('Tidak ada toko LENGKAP'+ket+'. '+dilewati+' toko belum lengkap — lengkapi dulu (klik "Belum Lengkap").'); return; }
       var prov = (SESI && SESI.admin) ? 'SEMUA-PROVINSI' : (SESI && SESI.provinsi ? SESI.provinsi : 'provinsi');
       var cols = [
         ['ID', 'id'], ['Tanggal', 'tanggal'], ['Provinsi', 'provinsi'], ['Area/Kota', 'area'],
@@ -1002,10 +1079,13 @@
       var blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
       var tgl = new Date().toISOString().slice(0, 10);
-      a.download = 'Database_' + String(prov).replace(/[^\w]+/g, '_') + '_' + tgl + '.xls';
+      var sufiks = (mode === 'range')
+        ? (dari === sampai ? dari : dari + '_sd_' + sampai)
+        : (mode === 'today' ? todayStr.split('/').reverse().join('-') : 'SEMUA_' + tgl);
+      a.download = 'Database_' + String(prov).replace(/[^\w]+/g, '_') + '_' + sufiks + '.xls';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-      var msg = rows.length + ' toko LENGKAP masuk Excel.'; if (dilewati > 0) msg += '\n' + dilewati + ' toko DILEWATI (belum lengkap) — klik "Belum Lengkap" untuk lihat.'; alert(msg);
+      var msg = rows.length + ' toko LENGKAP masuk Excel' + ket + '.'; if (dilewati > 0) msg += '\n' + dilewati + ' toko DILEWATI (belum lengkap) — klik "Belum Lengkap" untuk lihat.'; alert(msg);
     }
     function badge(s) {
       s = String(s || '');
