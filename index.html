@@ -485,11 +485,50 @@
     }
 
     // ========== CEK LEVEL (TS) ==========
-    function levelOptions(sel) {
-      var lv = ['WMD', 'RKA', 'RMD 1', 'RMD 2', 'RMD 3', 'RMD 4', 'RMD 5', 'SR'];
+    var LEVEL_DEFAULT = ['WMD', 'RKA', 'RMD 1', 'RMD 2', 'RMD 3', 'RMD 4', 'RMD 5', 'SR'];
+    // Daftar level = level baku + level lain yang SUDAH dipakai di data (level baru yang
+    // pernah diketik TS otomatis ikut muncul di sini untuk semua kunjungan berikutnya).
+    function daftarLevel(extra) {
+      var out = [], seen = {};
+      function add(x) {
+        x = String(x == null ? '' : x).trim();
+        if (!x) return;
+        var k = x.toUpperCase();
+        if (seen[k]) return;
+        seen[k] = 1; out.push(x);
+      }
+      for (var i = 0; i < LEVEL_DEFAULT.length; i++) add(LEVEL_DEFAULT[i]);
+      for (var j = 0; j < DATA.length; j++) add(DATA[j].jenisToko);
+      add(extra);
+      return out;
+    }
+    // dgnBaru = tampilkan pilihan "Level baru (ketik sendiri)"
+    function levelOptions(sel, dgnBaru) {
+      var lv = daftarLevel(sel), s = String(sel == null ? '' : sel).trim().toUpperCase();
       var o = '<option value="">- pilih level -</option>';
-      for (var i = 0; i < lv.length; i++) o += '<option' + (String(sel) === lv[i] ? ' selected' : '') + '>' + lv[i] + '</option>';
+      for (var i = 0; i < lv.length; i++) {
+        o += '<option' + (s === lv[i].toUpperCase() ? ' selected' : '') + '>' + esc(lv[i]) + '</option>';
+      }
+      if (dgnBaru) o += '<option value="__baru__">➕ Level baru (ketik sendiri)...</option>';
       return o;
+    }
+    function peranOptions(sel) {
+      var lv = ['Sales SKN', 'Sales Principal', 'Promotor'], s = String(sel == null ? '' : sel).trim();
+      var o = '<option value="">- jangan ubah -</option>';
+      for (var i = 0; i < lv.length; i++) o += '<option' + (s === lv[i] ? ' selected' : '') + '>' + lv[i] + '</option>';
+      return o;
+    }
+    // 'dd/MM/yyyy' (bentuk dari server) -> 'yyyy-MM-dd' (bentuk <input type=date>)
+    function tglKeInput(s) {
+      s = String(s == null ? '' : s).trim();
+      var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+      m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? m[1] + '-' + m[2] + '-' + m[3] : '';
+    }
+    function levelGanti(sel, id) {
+      var box = document.getElementById('ed_levelbaru_box_' + id);
+      if (box) box.style.display = (sel.value === '__baru__') ? 'block' : 'none';
     }
     function cekItemHtml(r) {
       var id = esc(r.id);
@@ -1167,15 +1206,38 @@
       var id = esc(r.id);
       var editBtn = '<button class="dl" onclick="toggleEdit(event,\'' + id + '\')">✏️ Edit</button>';
       var hapusBtn = '<button class="dl" style="background:#c02b2b;" onclick="hapusKunjungan(event,\'' + id + '\')">🗑️ Hapus</button>';
+      var koorSkrg = (r.lat !== '' && r.lat != null && r.lng !== '' && r.lng != null) ? (r.lat + ', ' + r.lng) : '';
+      var buangFile = flist.length
+        ? '<label>Buang file yang salah (opsional)</label><div style="font-size:13px;">' +
+          flist.map(function (u, i) {
+            var fid = (String(u).match(/\/d\/([^\/]+)/) || [])[1] || '';
+            return '<label style="display:flex;gap:7px;align-items:center;font-weight:400;margin:4px 0;">' +
+              '<input type="checkbox" style="width:auto;" data-hapusfile="' + id + '" value="' + escA(fid) + '" onclick="event.stopPropagation()">' +
+              '<span>File ' + (i + 1) + '</span>' +
+              '<a class="vid" href="' + u + '" target="_blank" onclick="event.stopPropagation()">lihat</a></label>';
+          }).join('') + '</div>' +
+          '<div class="hint">Dicentang = dibuang dari kunjungan ini. File di Google Drive TIDAK ikut terhapus.</div>'
+        : '';
       var edForm =
         '<div id="edf_' + id + '" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-top:8px;">' +
         '<div class="k">✏️ Edit data kunjungan</div>' +
-        '<label>Nama Toko</label><input id="ed_toko_' + id + '" value="' + escA(r.toko) + '" onclick="event.stopPropagation()">' +
-        '<label>Level Toko</label><select id="ed_level_' + id + '" onclick="event.stopPropagation()">' + levelOptions(r.jenisToko) + '</select>' +
-        '<label>Area / Kota</label><input id="ed_area_' + id + '" value="' + escA(r.area) + '" onclick="event.stopPropagation()">' +
-        '<label>Nama Sales</label><input id="ed_sales_' + id + '" value="' + escA(r.sales) + '" onclick="event.stopPropagation()">' +
+        '<label>Tanggal Kunjungan</label><input type="date" id="ed_tgl_' + id + '" value="' + escA(tglKeInput(r.tanggal)) + '" onclick="event.stopPropagation()">' +
+        '<div class="hint">Perbaiki di sini kalau sales salah pilih tanggal.</div>' +
+        '<label>Nama Toko</label><input type="text" id="ed_toko_' + id + '" value="' + escA(r.toko) + '" onclick="event.stopPropagation()">' +
+        '<label>Level Toko</label><select id="ed_level_' + id + '" onchange="levelGanti(this,\'' + id + '\')" onclick="event.stopPropagation()">' + levelOptions(r.jenisToko, true) + '</select>' +
+        '<div id="ed_levelbaru_box_' + id + '" style="display:none;">' +
+          '<input type="text" id="ed_levelbaru_' + id + '" placeholder="Ketik nama level baru, mis. RMD 6" onclick="event.stopPropagation()" style="margin-top:6px;">' +
+          '<div class="hint">Level baru otomatis ditambahkan ke tab "Target Level" di Google Sheet dengan target KOSONG — isi angka target Infinix-nya di sana, kalau tidak CAPA level ini tak terhitung.</div>' +
+        '</div>' +
+        '<label>Area / Kota</label><input type="text" id="ed_area_' + id + '" value="' + escA(r.area) + '" onclick="event.stopPropagation()">' +
+        '<label>Nama Sales</label><input type="text" id="ed_sales_' + id + '" value="' + escA(r.sales) + '" onclick="event.stopPropagation()">' +
+        '<label>Peran Pelapor</label><select id="ed_peran_' + id + '" onclick="event.stopPropagation()">' + peranOptions(r.sumber) + '</select>' +
+        '<label>Lokasi Toko (Google Maps)</label><input type="text" id="ed_maps_' + id + '" value="' + escA(koorSkrg) + '" placeholder="Tempel link Maps atau ketik koordinat" onclick="event.stopPropagation()">' +
+        '<div class="hint">' + (koorSkrg ? 'Lokasi sekarang: ' + esc(koorSkrg) + '. ' : '⚠️ Lokasi belum ada. ') +
+          'Boleh link pendek (https://maps.app.goo.gl/...), link maps biasa, atau koordinat "3.12345, 98.67890". Dikosongkan = lokasi lama dibiarkan.</div>' +
         '<label>Tambah foto (opsional)</label><input type="file" accept="image/*" multiple id="ed_foto_' + id + '" onchange="fotoInputChange(this,\'edit_' + id + '\')" onclick="event.stopPropagation()">' +
         '<div id="thumbs_edit_' + id + '" style="margin-top:6px;"></div>' +
+        buangFile +
         '<div style="margin-top:8px;">' +
           '<button class="dl" onclick="simpanEdit(event,\'' + id + '\',false)">💾 Simpan</button>' +
           '<button class="dl" style="background:#6d28d9;" onclick="simpanEdit(event,\'' + id + '\',true)">💾 Simpan &amp; Nilai Ulang</button>' +
@@ -1258,12 +1320,24 @@
       ev.stopPropagation();
       var btn = ev.currentTarget, m = document.getElementById('edm_' + id);
       function gv(p) { var e = document.getElementById(p + id); return e ? e.value.trim() : ''; }
-      var data = { toko: gv('ed_toko_'), jenisToko: gv('ed_level_'), area: gv('ed_area_'), sales: gv('ed_sales_') };
+      var lv = gv('ed_level_');
+      if (lv === '__baru__') {
+        lv = gv('ed_levelbaru_').toUpperCase();
+        if (!lv) { m.textContent = '❌ Nama level baru masih kosong.'; return; }
+      }
+      var data = {
+        toko: gv('ed_toko_'), jenisToko: lv, area: gv('ed_area_'), sales: gv('ed_sales_'),
+        tanggal: gv('ed_tgl_'), maps: gv('ed_maps_'), sumber: gv('ed_peran_')
+      };
+      var hapusIds = [], cbs = document.querySelectorAll('input[data-hapusfile="' + id + '"]');
+      for (var c = 0; c < cbs.length; c++) if (cbs[c].checked) hapusIds.push(cbs[c].value);
+      if (hapusIds.length && !confirm('Buang ' + hapusIds.length + ' file dari kunjungan ini?\n(File di Google Drive tidak ikut terhapus.)')) return;
       var mkey = 'edit_' + id, arr = MEDIA[mkey] || [];
       btn.disabled = true; m.textContent = '⏳ Menyimpan...';
       try {
-        var files = { photoIds: [] };
+        var files = { photoIds: [], hapusIds: hapusIds };
         for (var i = 0; i < arr.length; i++) { m.textContent = '⏳ Upload foto ' + (i + 1) + '/' + arr.length + '...'; files.photoIds.push(await uploadOneFile(await kompositM(arr[i]), function () {})); }
+        if (data.maps) m.textContent = '⏳ Membaca lokasi Maps...';
         await callApi('updateDataKunjungan', { id: id, data: data, files: files, reNilai: !!reNilai });
         delete MEDIA[mkey];
         m.textContent = reNilai ? '✅ Tersimpan. AI menilai ulang (±5 menit)...' : '✅ Tersimpan.';
